@@ -75,15 +75,46 @@ public class ImageStorageService {
     }
 
     public void delete(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return;
+        }
+
+        String cleanFilename = StringUtils.cleanPath(filename);
+        if (cleanFilename.contains("..") || cleanFilename.contains("/") || cleanFilename.contains("\\")) {
+            log.warn("Detekován pokus o path traversal při mazání souboru: '{}'", filename);
+            throw new FileStorageException("Neplatný název souboru pro smazání (detekován path traversal): " + filename);
+        }
+
+        Path destinationFile = this.rootLocation.resolve(cleanFilename).normalize().toAbsolutePath();
+        if (!destinationFile.startsWith(this.rootLocation) || !destinationFile.getParent().equals(this.rootLocation)) {
+            log.warn("Pokus o smazání souboru mimo povolený adresář: '{}'", filename);
+            throw new FileStorageException("Nelze smazat soubor mimo cílový adresář: " + filename);
+        }
+
         try {
-            Path file = rootLocation.resolve(filename);
-            Files.deleteIfExists(file);
+            Files.deleteIfExists(destinationFile);
         } catch (IOException e) {
-            log.warn("Nepodařilo se smazat soubor: {}", filename);
+            log.warn("Nepodařilo se smazat soubor: {}", filename, e);
         }
     }
 
     public Path load(String filename) {
-        return rootLocation.resolve(filename);
+        if (filename == null || filename.isBlank()) {
+            throw new FileStorageException("Název souboru nesmí být prázdný.");
+        }
+
+        String cleanFilename = StringUtils.cleanPath(filename);
+        if (cleanFilename.contains("..") || cleanFilename.contains("/") || cleanFilename.contains("\\")) {
+            log.warn("Detekován pokus o path traversal při načítání souboru: '{}'", filename);
+            throw new FileStorageException("Neplatný název souboru (detekován path traversal): " + filename);
+        }
+
+        Path destinationFile = this.rootLocation.resolve(cleanFilename).normalize().toAbsolutePath();
+        if (!destinationFile.startsWith(this.rootLocation) || !destinationFile.getParent().equals(this.rootLocation)) {
+            log.warn("Pokus o přístup k souboru mimo povolený adresář: '{}'", filename);
+            throw new FileStorageException("Nelze načíst soubor mimo cílový adresář: " + filename);
+        }
+
+        return destinationFile;
     }
 }

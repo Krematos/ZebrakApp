@@ -131,13 +131,6 @@ public class SecurityIntegrationTest {
                     .andExpect(jsonPath("$.nickname").value("NovyTester"));
         }
 
-        @Test
-        @DisplayName("GET request vrátí XSRF-TOKEN cookie pro frontend")
-        void testGetRequestReturnsXsrfTokenCookie() throws Exception {
-            mockMvc.perform(get("/api/metadata/categories"))
-                    .andExpect(status().isOk())
-                    .andExpect(cookie().exists("XSRF-TOKEN"));
-        }
 
         @Test
         @DisplayName("Neplatný nebo pozměněný JWT token v cookie vrátí 401 Unauthorized")

@@ -192,33 +192,9 @@ export class MapViewComponent implements OnInit, OnChanges {
 
       const marker = L.marker([place.latitude, place.longitude], { icon: customIcon }).addTo(this.map!);
 
-      // Stylový popup s náhledem
-      const popupContent = `
-        <div style="font-family:'Plus Jakarta Sans',sans-serif; min-width: 180px; padding: 4px;">
-          <strong style="font-size: 14px; color: #0f172a; display: block; margin-bottom: 4px;">${place.title}</strong>
-          <span style="font-size: 11px; background: #f1f5f9; padding: 2px 6px; border-radius: 99px; font-weight: 600; color: #475569;">
-            ${place.categoryLabel}
-          </span>
-          <span style="font-size: 11px; background: #eff6ff; color: #1d4ed8; padding: 2px 6px; border-radius: 99px; font-weight: 700; margin-left: 4px;">
-            ${place.priceLevelLabel}
-          </span>
-          <p style="font-size: 12px; color: #64748b; margin: 6px 0 8px 0;">📍 ${place.city}, ${place.address}</p>
-          <button id="btn-popup-${place.id}" style="width: 100%; background: #2563eb; color: #fff; border: none; padding: 6px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;">
-            Zobrazit detail →
-          </button>
-        </div>
-      `;
-
-      marker.bindPopup(popupContent);
-
-      marker.on('popupopen', () => {
-        const btn = document.getElementById(`btn-popup-${place.id}`);
-        if (btn) {
-          btn.onclick = () => {
-            this.placeClicked.emit(place);
-          };
-        }
-      });
+      // Bezpečné vytvoření popup elementu bez rizika XSS
+      const popupEl = this.createPopupElement(place);
+      marker.bindPopup(popupEl);
 
       marker.on('click', () => {
         this.placeClicked.emit(place);
@@ -277,6 +253,50 @@ export class MapViewComponent implements OnInit, OnChanges {
     } else {
       this.map.setView([49.8175, 15.473], 8);
     }
+  }
+
+  private createPopupElement(place: Place): HTMLElement {
+    const container = document.createElement('div');
+    container.style.cssText = "font-family:'Plus Jakarta Sans',sans-serif; min-width: 180px; padding: 4px;";
+
+    const title = document.createElement('strong');
+    title.style.cssText = 'font-size: 14px; color: #0f172a; display: block; margin-bottom: 4px;';
+    title.textContent = place.title;
+    container.appendChild(title);
+
+    const badgesDiv = document.createElement('div');
+    badgesDiv.style.cssText = 'display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap;';
+
+    const categorySpan = document.createElement('span');
+    categorySpan.style.cssText =
+      'font-size: 11px; background: #f1f5f9; padding: 2px 6px; border-radius: 99px; font-weight: 600; color: #475569;';
+    categorySpan.textContent = place.categoryLabel || place.category;
+    badgesDiv.appendChild(categorySpan);
+
+    const priceSpan = document.createElement('span');
+    priceSpan.style.cssText =
+      'font-size: 11px; background: #eff6ff; color: #1d4ed8; padding: 2px 6px; border-radius: 99px; font-weight: 700;';
+    priceSpan.textContent = place.priceLevelLabel || place.priceLevel;
+    badgesDiv.appendChild(priceSpan);
+
+    container.appendChild(badgesDiv);
+
+    const addressP = document.createElement('p');
+    addressP.style.cssText = 'font-size: 12px; color: #64748b; margin: 0 0 8px 0;';
+    addressP.textContent = `📍 ${place.city}, ${place.address}`;
+    container.appendChild(addressP);
+
+    const btn = document.createElement('button');
+    btn.style.cssText =
+      'width: 100%; background: #2563eb; color: #fff; border: none; padding: 6px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s;';
+    btn.textContent = 'Zobrazit detail →';
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      this.placeClicked.emit(place);
+    };
+    container.appendChild(btn);
+
+    return container;
   }
 
   private getCategoryEmoji(category: string): string {
