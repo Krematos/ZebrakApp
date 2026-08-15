@@ -1,4 +1,4 @@
-package hanzner.zebrakapp;
+package hanzner.zebrakapp.auth;
 
 import hanzner.zebrakapp.dto.AuthResponse;
 import hanzner.zebrakapp.dto.RegisterRequest;
@@ -7,7 +7,6 @@ import hanzner.zebrakapp.entity.User;
 import hanzner.zebrakapp.exception.ErrorCode;
 import hanzner.zebrakapp.exception.UserAlreadyExistException;
 import hanzner.zebrakapp.repository.UserRepository;
-import hanzner.zebrakapp.security.CustomUserDetails;
 import hanzner.zebrakapp.security.JwtTokenProvider;
 import hanzner.zebrakapp.service.AuthService;
 import org.junit.jupiter.api.DisplayName;

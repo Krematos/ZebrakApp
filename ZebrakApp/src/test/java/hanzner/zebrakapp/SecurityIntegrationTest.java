@@ -7,7 +7,6 @@ import hanzner.zebrakapp.dto.RegisterRequest;
 import hanzner.zebrakapp.entity.*;
 import hanzner.zebrakapp.repository.PlaceRepository;
 import hanzner.zebrakapp.repository.UserRepository;
-import hanzner.zebrakapp.security.JwtTokenProvider;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +23,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @ActiveProfiles("Test")
 @Transactional
-class SecurityIntegrationTest {
+public class SecurityIntegrationTest {
 
     @Autowired
     private WebApplicationContext context;
@@ -44,9 +44,6 @@ class SecurityIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private JwtTokenProvider jwtTokenProvider;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -105,7 +102,7 @@ class SecurityIntegrationTest {
     }
 
     @Nested
-    @DisplayName("1. Testy HttpOnly Cookie autentizace")
+    @DisplayName("1. Testy HttpOnly Cookie autentizace a CSRF")
     class HttpOnlyCookieTests {
 
         @Test
@@ -132,6 +129,14 @@ class SecurityIntegrationTest {
             mockMvc.perform(get("/api/auth/me").cookie(cookie))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.nickname").value("NovyTester"));
+        }
+
+        @Test
+        @DisplayName("GET request vrátí XSRF-TOKEN cookie pro frontend")
+        void testGetRequestReturnsXsrfTokenCookie() throws Exception {
+            mockMvc.perform(get("/api/metadata/categories"))
+                    .andExpect(status().isOk())
+                    .andExpect(cookie().exists("XSRF-TOKEN"));
         }
 
         @Test
@@ -241,6 +246,7 @@ class SecurityIntegrationTest {
                     .build();
 
             mockMvc.perform(put("/api/places/" + placeUser1.getId())
+                            .with(csrf())
                             .cookie(user2Cookie)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(updateReq)))
@@ -280,6 +286,7 @@ class SecurityIntegrationTest {
                     .build();
 
             mockMvc.perform(put("/api/places/" + placeUser1.getId())
+                            .with(csrf())
                             .cookie(adminCookie)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(updateReq)))

@@ -1,4 +1,4 @@
-package hanzner.zebrakapp;
+package hanzner.zebrakapp.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hanzner.zebrakapp.dto.AuthRequest;
