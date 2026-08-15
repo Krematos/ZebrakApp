@@ -1,6 +1,9 @@
 spring:
   application:
     name: ZebrakApp
+  docker:
+    compose:
+      enabled: ${DOCKER_COMPOSE_ENABLED:false}
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/mydatabase}
     username: ${DB_USERNAME:myuser}
