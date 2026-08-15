@@ -1,0 +1,15 @@
+# Multi-stage build pro Spring Boot 4.1 s Java 25
+FROM openjdk:25-jdk-slim AS build
+WORKDIR /app
+COPY pom.xml mvnw mvnw.cmd ./
+COPY .mvn .mvn
+RUN chmod +x ./mvnw && ./mvnw dependency:go-offline -B || true
+COPY src src
+RUN ./mvnw clean package -DskipTests
+
+FROM openjdk:25-jdk-slim
+WORKDIR /app
+RUN mkdir -p /app/uploads
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -1,0 +1,45 @@
+# Backend (.dockerignore)
+.git
+.gitignore
+.gitattributes
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.settings/
+.project
+.classpath
+.factorypath
+.apt_generated/
+.sts4-cache/
+
+# Build artifacts & binaries
+target/
+*.class
+*.jar
+*.war
+.mvn/wrapper/maven-wrapper.jar
+hs_err_pid*
+replay_pid*
+
+# Uploads, runtime data & logs
+uploads/
+logs/
+*.log
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Docs & Config
+HELP.md
+compose.yaml

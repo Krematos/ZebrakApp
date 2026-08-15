@@ -1,0 +1,38 @@
+# Frontend (.dockerignore)
+.git
+.gitignore
+.editorconfig
+
+# IDEs
+.vscode/
+.idea/
+
+# Dependencies & Build output
+node_modules/
+dist/
+.angular/
+coverage/
+/out-tsc
+/bazel-out
+.sass-cache/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Docs & Config
+README.md
+proxy.conf.json

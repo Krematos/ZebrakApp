@@ -1,0 +1,258 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import 'leaflet/dist/leaflet.css';
+
+:root {
+  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  
+  /* Brand colors */
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-500: #2563eb;
+  --primary-600: #1d4ed8;
+  --primary-700: #1e40af;
+  
+  --accent-amber: #d97706;
+  --accent-green: #16a34a;
+  --accent-red: #dc2626;
+
+  /* Surfaces & Neutrals */
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #ffffff;
+  --bg-surface-hover: #f1f5f9;
+  
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-light: #94a3b8;
+  
+  --border-color: #e2e8f0;
+  --border-color-subtle: #f1f5f9;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-family);
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Common UI Components */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.625rem 1.125rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background-color: var(--primary-600);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(29, 78, 216, 0.2);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-700);
+  box-shadow: 0 4px 8px rgba(29, 78, 216, 0.3);
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: #cbd5e1;
+}
+
+.btn-danger {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.btn-danger:hover {
+  background-color: #fecaca;
+}
+
+.btn-success {
+  background-color: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+
+.btn-success:hover {
+  background-color: #bbf7d0;
+}
+
+.btn-icon {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: var(--radius-md);
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.65rem 0.875rem;
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  color: var(--text-main);
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input-field:focus {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.input-field::placeholder {
+  color: var(--text-light);
+}
+
+.select-field {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.25rem;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+}
+
+.badge-food { background-color: #dcfce7; color: #15803d; }
+.badge-second-hand { background-color: #fce7f3; color: #be185d; }
+.badge-outlet { background-color: #ffedd5; color: #c2410c; }
+.badge-pallet { background-color: #ede9fe; color: #6d28d9; }
+.badge-factory { background-color: #e0f2fe; color: #0369a1; }
+.badge-furniture { background-color: #fef3c7; color: #b45309; }
+.badge-drugstore { background-color: #cffafe; color: #0e7490; }
+.badge-other { background-color: #f1f5f9; color: #475569; }
+
+.badge-status-approved { background-color: #dcfce7; color: #166534; }
+.badge-status-pending { background-color: #fef3c7; color: #92400e; }
+.badge-status-rejected { background-color: #fee2e2; color: #991b1b; }
+
+/* Custom Leaflet Marker Styling */
+.custom-map-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  border: 2px solid #ffffff;
+  cursor: pointer;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+}
+
+.custom-map-pin:hover, .custom-map-pin.active {
+  transform: rotate(-45deg) scale(1.15);
+  z-index: 1000 !important;
+}
+
+.custom-map-pin .pin-content {
+  transform: rotate(45deg);
+  font-size: 16px;
+  color: #ffffff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Modal Backdrop & Animations */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.modal-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  max-width: 580px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPop {
+  0% { opacity: 0; transform: scale(0.96) translateY(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
