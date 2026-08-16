@@ -21,19 +21,40 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String @NonNull ... args) {
         String adminEmail = "admin@zebrak.cz";
+        String adminPass = "admin123";
+
         userRepository.findByEmail(adminEmail).ifPresentOrElse(
-                user -> log.info("Výchozí administrátorský účet '{}' je připraven.", adminEmail),
+                user -> {
+                    boolean needsUpdate = false;
+                    if (!passwordEncoder.matches(adminPass, user.getPassword())) {
+                        user.setPassword(passwordEncoder.encode(adminPass));
+                        needsUpdate = true;
+                        log.info("Heslo výchozího administrátora '{}' bylo opraveno a aktualizováno.", adminEmail);
+                    }
+                    if (user.getRole() != Role.ROLE_ADMIN) {
+                        user.setRole(Role.ROLE_ADMIN);
+                        needsUpdate = true;
+                    }
+                    if (!user.isActive()) {
+                        user.setActive(true);
+                        needsUpdate = true;
+                    }
+                    if (needsUpdate) {
+                        userRepository.save(user);
+                    }
+                    log.info("Výchozí administrátorský účet '{}' je připraven k použití (heslo: {}).", adminEmail, adminPass);
+                },
                 () -> {
                     log.info("Vytvářím výchozího administrátora: {}", adminEmail);
                     User admin = User.builder()
                             .email(adminEmail)
-                            .password(passwordEncoder.encode("admin123"))
+                            .password(passwordEncoder.encode(adminPass))
                             .nickname("Administrátor Žebrák")
                             .role(Role.ROLE_ADMIN)
                             .active(true)
                             .build();
                     userRepository.save(admin);
-                    log.info("Výchozí administrátorský účet byl úspěšně inicializován.");
+                    log.info("Výchozí administrátorský účet byl úspěšně inicializován (heslo: {}).", adminPass);
                 }
         );
     }

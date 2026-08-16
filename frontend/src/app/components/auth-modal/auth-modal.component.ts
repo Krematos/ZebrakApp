@@ -124,12 +124,6 @@ import { AuthService } from '../../core/services/auth.service';
             </button>
           </form>
         </div>
-
-        <div class="modal-footer">
-          <p class="footer-hint">
-            Výchozí administrátorský účet: <code>admin&#64;zebrak.cz</code> / heslo: <code>admin123</code>
-          </p>
-        </div>
       </div>
     </div>
   `,
@@ -208,23 +202,6 @@ import { AuthService } from '../../core/services/auth.service';
       width: 100%;
       padding: 0.75rem;
       margin-top: 0.5rem;
-    }
-    .modal-footer {
-      padding: 1rem 1.5rem;
-      background: var(--bg-app);
-      border-top: 1px solid var(--border-color);
-      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-    }
-    .footer-hint {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      text-align: center;
-    }
-    .footer-hint code {
-      background: #e2e8f0;
-      padding: 2px 6px;
-      border-radius: 4px;
-      color: #0f172a;
     }
   `],
 })

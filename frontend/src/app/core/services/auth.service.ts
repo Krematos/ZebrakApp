@@ -8,6 +8,7 @@ import { AuthResponse, LoginRequest, RegisterRequest, User } from '../models/aut
 })
 export class AuthService {
   private readonly USER_KEY = 'zebrak_user_data';
+  private readonly TOKEN_KEY = 'zebrak_jwt_token';
 
   readonly currentUser = signal<User | null>(this.getStoredUser());
   readonly isAuthenticated = computed(() => !!this.currentUser());
@@ -20,6 +21,9 @@ export class AuthService {
   login(request: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>('/api/auth/login', request).pipe(
       tap((res) => {
+        if (res.token) {
+          localStorage.setItem(this.TOKEN_KEY, res.token);
+        }
         this.saveUser(res.user);
       })
     );
@@ -28,6 +32,9 @@ export class AuthService {
   register(request: RegisterRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>('/api/auth/register', request).pipe(
       tap((res) => {
+        if (res.token) {
+          localStorage.setItem(this.TOKEN_KEY, res.token);
+        }
         this.saveUser(res.user);
       })
     );
@@ -42,6 +49,7 @@ export class AuthService {
 
   private clearLocalState(): void {
     localStorage.removeItem(this.USER_KEY);
+    localStorage.removeItem(this.TOKEN_KEY);
     this.currentUser.set(null);
   }
 

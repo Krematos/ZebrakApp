@@ -115,7 +115,7 @@ public class PlaceService {
     ) {
         String cleanedQuery = (query != null && !query.trim().isEmpty()) ? query.trim() : null;
 
-        List<Place> places = placeRepository.searchApprovedPlaces(
+        org.springframework.data.jpa.domain.Specification<Place> spec = hanzner.zebrakapp.repository.PlaceSpecification.filterPlaces(
                 PlaceStatus.APPROVED,
                 category,
                 priceLevel,
@@ -125,6 +125,11 @@ public class PlaceService {
                 minLng,
                 maxLng,
                 cleanedQuery
+        );
+
+        List<Place> places = placeRepository.findAll(
+                spec,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
         );
 
         return places.stream()
