@@ -7,6 +7,7 @@ import hanzner.zebrakapp.entity.Role;
 import hanzner.zebrakapp.entity.User;
 import hanzner.zebrakapp.security.CustomUserDetails;
 import hanzner.zebrakapp.service.PlaceService;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,14 +60,14 @@ class UserControllerUnitTest {
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     @Override
-                    public boolean supportsParameter(MethodParameter parameter) {
+                    public boolean supportsParameter(@NonNull MethodParameter parameter) {
                         return parameter.getParameterType().equals(CustomUserDetails.class)
                                 && parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
                     }
 
                     @Override
-                    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                                  NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+                    public Object resolveArgument(@NonNull MethodParameter parameter, ModelAndViewContainer mavContainer,
+                                                  @NonNull NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
                         return userPrincipal;
                     }
                 })

@@ -83,6 +83,35 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        log.debug("Statický prostředek nenalezen: {}", ex.getResourcePath());
+        Map<String, Object> response = new HashMap<>();
+        response.put("errorCode", "RESOURCE_NOT_FOUND");
+        response.put("status", HttpStatus.NOT_FOUND.value());
+        response.put("message", "Požadovaný prostředek nebyl nalezen: " + ex.getResourcePath());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExceeded(org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        log.warn("Překročena maximální povolená velikost nahrávaného souboru: {}", ex.getMessage());
+        Map<String, Object> response = new HashMap<>();
+        response.put("errorCode", ErrorCode.PAYLOAD_TOO_LARGE.name());
+        response.put("status", HttpStatus.PAYLOAD_TOO_LARGE.value());
+        response.put("message", "Velikost nahrávaného souboru překročila maximální povolený limit.");
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotSupported(org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("errorCode", "METHOD_NOT_ALLOWED");
+        response.put("status", HttpStatus.METHOD_NOT_ALLOWED.value());
+        response.put("message", "HTTP metoda není podporována: " + ex.getMethod());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneralException(Exception ex) {
         log.error("Neočekávaná chyba serveru: ", ex);

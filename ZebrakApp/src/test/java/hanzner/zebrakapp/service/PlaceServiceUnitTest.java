@@ -45,6 +45,9 @@ class PlaceServiceUnitTest {
     @Mock
     private AuthService authService;
 
+    @Mock
+    private RateLimiterService rateLimiterService;
+
     @InjectMocks
     private PlaceService placeService;
 

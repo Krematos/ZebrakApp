@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Place } from '../../core/models/place.model';
 
 @Component({
@@ -57,12 +58,27 @@ import { Place } from '../../core/models/place.model';
           {{ statusMessage() }}
         </div>
 
-        <!-- Pending Queue / Place List -->
-        <div *ngIf="isLoading()" class="loading-state">
-          Načítám záznamy...
+        <!-- Error Banner -->
+        <div *ngIf="hasError()" class="error-banner">
+          <div class="error-banner-content">
+            <span class="error-banner-icon">⚠️</span>
+            <div class="error-banner-text">
+              <strong>Nepodařilo se načíst administrátorská data</strong>
+              <span>Zkontrolujte připojení k serveru a zkuste to znovu.</span>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-retry-sm" (click)="loadData()">
+            🔄 Zkusit znovu
+          </button>
         </div>
 
-        <div *ngIf="!isLoading() && displayPlaces().length === 0" class="empty-state">
+        <!-- Pending Queue / Place List -->
+        <div *ngIf="isLoading()" class="loading-state">
+          <div class="spinner"></div>
+          <p>Načítám záznamy...</p>
+        </div>
+
+        <div *ngIf="!isLoading() && !hasError() && displayPlaces().length === 0" class="empty-state">
           <p>Žádná místa v této kategorii.</p>
         </div>
 
@@ -323,19 +339,94 @@ import { Place } from '../../core/models/place.model';
       border: 1px solid #bbf7d0;
       font-weight: 600;
     }
+    .error-banner {
+      margin-bottom: 1.25rem;
+      padding: 0.875rem 1.25rem;
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: var(--radius-md, 8px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      animation: fadeIn 0.2s ease;
+    }
+    .error-banner-content {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .error-banner-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    .error-banner-text {
+      display: flex;
+      flex-direction: column;
+    }
+    .error-banner-text strong {
+      font-size: 0.875rem;
+      color: #991b1b;
+    }
+    .error-banner-text span {
+      font-size: 0.8125rem;
+      color: #b91c1c;
+    }
+    .btn-retry-sm {
+      background: #dc2626;
+      color: #ffffff;
+      border: none;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      border-radius: var(--radius-sm, 6px);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease;
+    }
+    .btn-retry-sm:hover {
+      background: #b91c1c;
+    }
+
+    .loading-state {
+      padding: 3rem 1.5rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--text-muted);
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #e2e8f0;
+      border-top-color: var(--primary-600);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
     .reject-modal {
       max-width: 480px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   `],
 })
 export class AdminDashboardComponent implements OnInit {
   private apiService = inject(ApiService);
+  private toastService = inject(ToastService);
   readonly authService = inject(AuthService);
 
   readonly activeTab = signal<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
   readonly pendingPlaces = signal<Place[]>([]);
   readonly displayPlaces = signal<Place[]>([]);
   readonly isLoading = signal(false);
+  readonly hasError = signal(false);
   readonly statusMessage = signal<string | null>(null);
 
   readonly rejectingPlace = signal<Place | null>(null);
@@ -352,19 +443,24 @@ export class AdminDashboardComponent implements OnInit {
 
   loadData(): void {
     this.isLoading.set(true);
+    this.hasError.set(false);
 
     // Načíst pending pro badge
     this.apiService.getPendingPlaces().subscribe({
       next: (res) => this.pendingPlaces.set(res),
+      error: () => {},
     });
 
     this.apiService.getAllPlacesAdmin(this.activeTab()).subscribe({
       next: (res) => {
         this.displayPlaces.set(res);
         this.isLoading.set(false);
+        this.hasError.set(false);
       },
       error: () => {
         this.isLoading.set(false);
+        this.hasError.set(true);
+        this.toastService.error('Nepodařilo se načíst data administrace.', 'Chyba serveru');
       },
     });
   }
@@ -372,8 +468,11 @@ export class AdminDashboardComponent implements OnInit {
   approve(place: Place): void {
     this.apiService.approvePlace(place.id).subscribe({
       next: () => {
-        this.statusMessage.set(`Místo "${place.title}" bylo úspěšně schváleno a publikováno.`);
+        this.toastService.success(`Místo "${place.title}" bylo schváleno.`);
         this.loadData();
+      },
+      error: () => {
+        this.toastService.error(`Schválení místa "${place.title}" se nezdařilo.`);
       },
     });
   }
@@ -390,8 +489,11 @@ export class AdminDashboardComponent implements OnInit {
     this.apiService.rejectPlace(place.id, this.rejectionReasonText).subscribe({
       next: () => {
         this.rejectingPlace.set(null);
-        this.statusMessage.set(`Místo "${place.title}" bylo zamítnuto.`);
+        this.toastService.success(`Místo "${place.title}" bylo zamítnuto.`);
         this.loadData();
+      },
+      error: () => {
+        this.toastService.error(`Zamítnutí místa se nezdařilo.`);
       },
     });
   }
@@ -400,8 +502,11 @@ export class AdminDashboardComponent implements OnInit {
     if (confirm(`Opravdu chcete trvale smazat místo "${place.title}"?`)) {
       this.apiService.deletePlace(place.id).subscribe({
         next: () => {
-          this.statusMessage.set(`Místo "${place.title}" bylo smazáno.`);
+          this.toastService.success(`Místo "${place.title}" bylo smazáno.`);
           this.loadData();
+        },
+        error: () => {
+          this.toastService.error(`Smazání místa se nezdařilo.`);
         },
       });
     }

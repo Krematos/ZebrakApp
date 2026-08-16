@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Place } from '../../core/models/place.model';
 import { AddPlaceModalComponent } from '../../components/add-place-modal/add-place-modal.component';
 
@@ -25,11 +26,38 @@ import { AddPlaceModalComponent } from '../../components/add-place-modal/add-pla
       </header>
 
       <main class="page-main">
-        <div *ngIf="isLoading()" class="loading-state">
-          Načítám vaše místa...
+        <!-- Error Banner (if error occurred during refresh) -->
+        <div *ngIf="hasError() && places().length > 0" class="error-banner">
+          <div class="error-banner-content">
+            <span class="error-banner-icon">⚠️</span>
+            <div class="error-banner-text">
+              <strong>Nepodařilo se načíst data</strong>
+              <span>Zkontrolujte připojení k serveru a zkuste to znovu.</span>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-retry-sm" (click)="loadData()">
+            🔄 Zkusit znovu
+          </button>
         </div>
 
-        <div *ngIf="!isLoading() && places().length === 0" class="empty-state">
+        <!-- Loading State -->
+        <div *ngIf="isLoading()" class="loading-state">
+          <div class="spinner"></div>
+          <p>Načítám vaše místa...</p>
+        </div>
+
+        <!-- Error Full State -->
+        <div *ngIf="!isLoading() && hasError() && places().length === 0" class="empty-state error-full-state">
+          <span class="empty-emoji error-emoji">❌</span>
+          <h3>Nepodařilo se načíst vaše místa</h3>
+          <p>Při komunikaci se serverem došlo k chybě. Zkontrolujte připojení a zkuste to znovu.</p>
+          <button class="btn btn-primary retry-btn" (click)="loadData()">
+            🔄 Zkusit znovu
+          </button>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="!isLoading() && !hasError() && places().length === 0" class="empty-state">
           <span class="empty-emoji">📍</span>
           <h3>Zatím jste nepřidali žádné místo</h3>
           <p>Znáte skvělý sekáč, levné potraviny nebo podnikový outlet? Přidejte ho na mapu!</p>
@@ -38,6 +66,7 @@ import { AddPlaceModalComponent } from '../../components/add-place-modal/add-pla
           </button>
         </div>
 
+        <!-- Places Grid -->
         <div *ngIf="!isLoading() && places().length > 0" class="places-grid">
           <div *ngFor="let place of places()" class="user-place-card">
             <div class="card-top">
@@ -124,6 +153,77 @@ import { AddPlaceModalComponent } from '../../components/add-place-modal/add-pla
       padding: 1.5rem;
       flex: 1;
     }
+
+    .error-banner {
+      margin-bottom: 1.25rem;
+      padding: 0.875rem 1.25rem;
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: var(--radius-md, 8px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      animation: fadeIn 0.2s ease;
+    }
+    .error-banner-content {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .error-banner-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    .error-banner-text {
+      display: flex;
+      flex-direction: column;
+    }
+    .error-banner-text strong {
+      font-size: 0.875rem;
+      color: #991b1b;
+    }
+    .error-banner-text span {
+      font-size: 0.8125rem;
+      color: #b91c1c;
+    }
+    .btn-retry-sm {
+      background: #dc2626;
+      color: #ffffff;
+      border: none;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      border-radius: var(--radius-sm, 6px);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease;
+    }
+    .btn-retry-sm:hover {
+      background: #b91c1c;
+    }
+
+    .loading-state {
+      padding: 4rem 1.5rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      color: var(--text-muted);
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e2e8f0;
+      border-top-color: var(--primary-600);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
     .places-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -207,15 +307,34 @@ import { AddPlaceModalComponent } from '../../components/add-place-modal/add-pla
     .empty-emoji {
       font-size: 3.5rem;
     }
+    .error-full-state {
+      background: #fffafb;
+    }
+    .error-full-state h3 {
+      color: #991b1b;
+    }
+    .retry-btn {
+      margin-top: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   `],
 })
 export class MyPlacesComponent implements OnInit {
   private apiService = inject(ApiService);
+  private toastService = inject(ToastService);
   readonly authService = inject(AuthService);
 
   readonly places = signal<Place[]>([]);
   readonly categories = signal<any[]>([]);
   readonly isLoading = signal(false);
+  readonly hasError = signal(false);
   readonly showAddModal = signal(false);
   readonly editPlaceData = signal<Place | null>(null);
 
@@ -223,18 +342,27 @@ export class MyPlacesComponent implements OnInit {
     this.loadData();
     this.apiService.getCategories().subscribe({
       next: (cats) => this.categories.set(cats),
+      error: () => {},
     });
   }
 
   loadData(): void {
     this.isLoading.set(true);
+    this.hasError.set(false);
+
     this.apiService.getMyPlaces().subscribe({
       next: (res) => {
         this.places.set(res);
         this.isLoading.set(false);
+        this.hasError.set(false);
       },
       error: () => {
         this.isLoading.set(false);
+        this.hasError.set(true);
+        this.toastService.error(
+          'Nepodařilo se načíst vaše místa, zkuste to znovu.',
+          'Chyba načítání'
+        );
       },
     });
   }

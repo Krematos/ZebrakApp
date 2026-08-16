@@ -48,3 +48,6 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+logging:
+  level:
+    org.apache.tomcat.util.http.parser.Cookie: WARN

@@ -341,12 +341,6 @@ cd ZebrakApp
 ./mvnw test
 ```
 
-Výsledek testů:
-```text
-[INFO] Results:
-[INFO] Tests run: 44, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS
-```
 
 ---
 

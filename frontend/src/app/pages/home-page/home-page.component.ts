@@ -8,6 +8,7 @@ import { PlaceDetailComponent } from '../../components/place-detail/place-detail
 import { AddPlaceModalComponent } from '../../components/add-place-modal/add-place-modal.component';
 import { AuthModalComponent } from '../../components/auth-modal/auth-modal.component';
 import { ApiService } from '../../core/services/api.service';
+import { ToastService } from '../../core/services/toast.service';
 import { CategoryInfo, CategoryType, DiscountType, Place, PriceLevelType } from '../../core/models/place.model';
 
 @Component({
@@ -48,14 +49,38 @@ import { CategoryInfo, CategoryType, DiscountType, Place, PriceLevelType } from 
             <span class="sidebar-subtitle">Kliknutím zobrazíte detail a polohu</span>
           </div>
 
+          <!-- Error Alert Banner (if error occurred during refresh or load) -->
+          <div *ngIf="hasError()" class="error-banner">
+            <div class="error-banner-content">
+              <span class="error-banner-icon">⚠️</span>
+              <div class="error-banner-text">
+                <strong>Nepodařilo se načíst data</strong>
+                <span>Zkontrolujte připojení k serveru a zkuste to znovu.</span>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-retry-sm" (click)="loadPlaces()">
+              🔄 Zkusit znovu
+            </button>
+          </div>
+
           <!-- Loading state -->
           <div *ngIf="isLoading()" class="loading-state">
             <div class="spinner"></div>
             <p>Načítám levná místa v okolí...</p>
           </div>
 
+          <!-- Error Full State (when list is empty and error happened) -->
+          <div *ngIf="!isLoading() && hasError() && places().length === 0" class="empty-state error-full-state">
+            <span class="empty-icon error-icon">❌</span>
+            <h3>Nepodařilo se načíst data</h3>
+            <p>Při komunikaci se serverem došlo k chybě. Zkontrolujte prosím své připojení a zkuste to znovu.</p>
+            <button class="btn btn-primary retry-btn" (click)="loadPlaces()">
+              🔄 Zkusit znovu
+            </button>
+          </div>
+
           <!-- Empty state -->
-          <div *ngIf="!isLoading() && places().length === 0" class="empty-state">
+          <div *ngIf="!isLoading() && !hasError() && places().length === 0" class="empty-state">
             <span class="empty-icon">🔍</span>
             <h3>Žádná místa neodpovídají filtrům</h3>
             <p>Zkuste upravit vyhledávací dotaz nebo vybrat jinou kategorii.</p>
@@ -196,6 +221,74 @@ import { CategoryInfo, CategoryType, DiscountType, Place, PriceLevelType } from 
       font-size: 1.1rem;
       color: var(--text-main);
     }
+
+    .error-banner {
+      margin: 0.5rem 1.25rem 0.75rem 1.25rem;
+      padding: 0.75rem 1rem;
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: var(--radius-md, 8px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      animation: fadeIn 0.2s ease;
+    }
+    .error-banner-content {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .error-banner-icon {
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+    .error-banner-text {
+      display: flex;
+      flex-direction: column;
+    }
+    .error-banner-text strong {
+      font-size: 0.8125rem;
+      color: #991b1b;
+    }
+    .error-banner-text span {
+      font-size: 0.75rem;
+      color: #b91c1c;
+    }
+    .btn-retry-sm {
+      background: #dc2626;
+      color: #ffffff;
+      border: none;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: var(--radius-sm, 6px);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease;
+    }
+    .btn-retry-sm:hover {
+      background: #b91c1c;
+    }
+
+    .error-full-state {
+      background-color: #fffafb;
+    }
+    .error-full-state h3 {
+      color: #991b1b;
+    }
+    .retry-btn {
+      margin-top: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .map-section {
       flex: 1;
       height: 100%;
@@ -251,10 +344,12 @@ import { CategoryInfo, CategoryType, DiscountType, Place, PriceLevelType } from 
 })
 export class HomePageComponent implements OnInit {
   private apiService = inject(ApiService);
+  private toastService = inject(ToastService);
 
   readonly places = signal<Place[]>([]);
   readonly categories = signal<CategoryInfo[]>([]);
   readonly isLoading = signal(false);
+  readonly hasError = signal(false);
   readonly selectedPlace = signal<Place | null>(null);
   readonly detailPlace = signal<Place | null>(null);
   readonly editPlaceData = signal<Place | null>(null);
@@ -273,18 +368,29 @@ export class HomePageComponent implements OnInit {
   loadMetadata(): void {
     this.apiService.getCategories().subscribe({
       next: (cats) => this.categories.set(cats),
+      error: () => {
+        // Categories can fail silently or retry, non-blocking
+      },
     });
   }
 
   loadPlaces(): void {
     this.isLoading.set(true);
+    this.hasError.set(false);
+
     this.apiService.searchPlaces(this.currentFilters).subscribe({
       next: (res) => {
         this.places.set(res);
         this.isLoading.set(false);
+        this.hasError.set(false);
       },
-      error: () => {
+      error: (err) => {
         this.isLoading.set(false);
+        this.hasError.set(true);
+        this.toastService.error(
+          'Nepodařilo se načíst data, zkuste to znovu.',
+          'Chyba načítání míst'
+        );
       },
     });
   }
