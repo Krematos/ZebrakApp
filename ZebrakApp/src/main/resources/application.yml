@@ -34,6 +34,10 @@ app:
     dir: ${UPLOAD_DIR:uploads}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost,http://localhost:4200,http://localhost:80,http://127.0.0.1:4200}
+  rate-limit:
+    place-creation:
+      min-interval-seconds: ${RATE_LIMIT_PLACE_MIN_INTERVAL:5}
+      max-requests-per-minute: ${RATE_LIMIT_PLACE_MAX_PER_MINUTE:5}
 
 springdoc:
   swagger-ui:

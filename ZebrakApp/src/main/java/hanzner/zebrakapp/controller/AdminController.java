@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -115,7 +116,7 @@ public class AdminController {
             @Parameter(description = "ID zamítaného místa", example = "1")
             @PathVariable Long id,
 
-            @RequestBody(required = false) AdminPlaceActionRequest request
+            @Valid @RequestBody(required = false) AdminPlaceActionRequest request
     ) {
         String reason = request != null ? request.getReason() : "Nespecifikováno";
         return ResponseEntity.ok(adminService.rejectPlace(id, reason));

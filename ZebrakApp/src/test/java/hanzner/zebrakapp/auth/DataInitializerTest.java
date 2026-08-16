@@ -13,11 +13,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @ActiveProfiles("Test")
+@Transactional
 class DataInitializerTest {
 
     @Autowired
@@ -48,24 +50,35 @@ class DataInitializerTest {
     }
 
     @Test
-    @DisplayName("DataInitializer automaticky opraví heslo, pokud je v databázi poškozený hash")
-    void testDataInitializerRepairsCorruptedPassword() {
-        // 1. Zavedeme chybný hash k účtu admin@zebrak.cz
+    @DisplayName("DataInitializer zachovává změněné heslo administrátora a nepřepisuje ho při restartu")
+    void testDataInitializerPreservesUserChangedPassword() {
+        String newPassword = "MyNewSecurePassword999!";
+
+        // 1. Administrátor si změní heslo na nové
         User admin = userRepository.findByEmail("admin@zebrak.cz").orElseThrow();
-        admin.setPassword("corrupted_hash_that_fails");
+        admin.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(admin);
 
-        // 2. Spustíme DataInitializer znovu
+        // 2. Spustíme DataInitializer znovu (simulace restartu aplikace)
         dataInitializer.run();
 
-        // 3. Ověříme, že se admin nyní bez problému přihlásí
-        AuthRequest req = AuthRequest.builder()
+        // 3. Ověříme, že se admin přihlásí s novým heslem a staré heslo neplatí
+        AuthRequest validReq = AuthRequest.builder()
+                .email("admin@zebrak.cz")
+                .password(newPassword)
+                .build();
+
+        AuthResponse response = authService.login(validReq);
+        assertNotNull(response);
+        assertEquals("admin@zebrak.cz", response.getUser().getEmail());
+        assertEquals(Role.ROLE_ADMIN, response.getUser().getRole());
+
+        // Ověříme, že staré heslo 'admin123' bylo nahrazeno a DataInitializer ho neobnovil
+        AuthRequest oldReq = AuthRequest.builder()
                 .email("admin@zebrak.cz")
                 .password("admin123")
                 .build();
 
-        AuthResponse response = authService.login(req);
-        assertNotNull(response);
-        assertEquals(Role.ROLE_ADMIN, response.getUser().getRole());
+        assertThrows(Exception.class, () -> authService.login(oldReq));
     }
 }

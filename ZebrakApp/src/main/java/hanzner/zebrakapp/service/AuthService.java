@@ -57,6 +57,7 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public AuthResponse login(AuthRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail().trim().toLowerCase(), request.getPassword())
@@ -75,6 +76,7 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public UserDto getCurrentUser(User user) {
         return mapToUserDto(user);
     }

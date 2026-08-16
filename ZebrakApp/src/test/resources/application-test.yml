@@ -21,3 +21,7 @@ app:
     expiration-ms: 86400000
   upload:
     dir: target/test-uploads
+  rate-limit:
+    place-creation:
+      min-interval-seconds: 0
+      max-requests-per-minute: 100

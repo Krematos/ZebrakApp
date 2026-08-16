@@ -15,6 +15,19 @@ import { Place } from '../../core/models/place.model';
 import { MapyService } from '../../core/services/mapy.service';
 import * as L from 'leaflet';
 
+/**
+ * Bezpečné escapování HTML speciálních znaků pro ochranu před XSS útoky
+ */
+export function escapeHtml(str: string | undefined | null): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 @Component({
   selector: 'app-map-view',
   standalone: true,

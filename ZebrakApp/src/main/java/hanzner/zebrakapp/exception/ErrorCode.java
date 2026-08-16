@@ -12,6 +12,7 @@ public enum ErrorCode {
     INVALID_IMAGE_FILE("Nepodporovaný formát nebo prázdný soubor obrázku", HttpStatus.BAD_REQUEST),
     FILE_STORAGE_ERROR("Chyba při práci se souborovým úložištěm", HttpStatus.INTERNAL_SERVER_ERROR),
     UNAUTHORIZED_ACCESS("Nemáte oprávnění k provedení této operace", HttpStatus.FORBIDDEN),
+    RATE_LIMIT_EXCEEDED("Příliš mnoho požadavků. Počkejte prosím chvíli před vytvořením dalšího místa.", HttpStatus.TOO_MANY_REQUESTS),
     VALIDATION_ERROR("Chyba validace vstupních dat", HttpStatus.BAD_REQUEST),
     INTERNAL_SERVER_ERROR("Došlo k neočekávané chybě serveru", HttpStatus.INTERNAL_SERVER_ERROR);
 

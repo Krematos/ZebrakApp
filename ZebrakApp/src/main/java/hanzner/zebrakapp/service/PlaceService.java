@@ -26,9 +26,14 @@ public class PlaceService {
     private final PlaceVerificationRepository verificationRepository;
     private final ImageStorageService imageStorageService;
     private final AuthService authService;
+    private final RateLimiterService rateLimiterService;
 
     @Transactional
     public PlaceResponse createPlace(PlaceCreateRequest request, User currentUser) {
+        if (currentUser.getRole() != Role.ROLE_ADMIN) {
+            rateLimiterService.checkPlaceCreationRateLimit(currentUser.getId());
+        }
+
         PlaceStatus initialStatus = currentUser.getRole() == Role.ROLE_ADMIN 
                 ? PlaceStatus.APPROVED 
                 : PlaceStatus.PENDING;

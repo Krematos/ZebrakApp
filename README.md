@@ -145,13 +145,11 @@ graph TD
 │
 ├── deploy/                       # 🚀 Konfigurace pro nasazení
 │   ├── .env.example              # Šablona proměnných pro Docker Compose stack
-│   ├── docker-compose.yml        # Multi-container stack (Postgres + Backend + Frontend + Nginx)
-│   ├── Dockerfile.backend        # Multi-stage Dockerfile pro Spring Boot
-│   └── nginx/default.conf        # Nginx konfigurace s reverzní proxy a CORS
-│
-└── doc/                          # 📚 Doplňující technická dokumentace
-    ├── security/                 # Bezpečnostní audity a reporty
-    └── data/                     # Dokumentace JPA dotazů a kritérií
+    ├── docker-compose.yml        # Multi-container stack (Postgres + Backend + Frontend + Nginx)
+    ├── Dockerfile.backend        # Multi-stage Dockerfile pro Spring Boot
+    └── nginx/default.conf        # Nginx konfigurace s reverzní proxy a CORS
+
+
 ```
 
 ---
