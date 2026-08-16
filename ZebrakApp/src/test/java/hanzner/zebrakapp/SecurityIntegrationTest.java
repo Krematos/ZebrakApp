@@ -337,4 +337,33 @@ public class SecurityIntegrationTest {
                     .andExpect(jsonPath("$.votesActive").value(2));
         }
     }
+
+    @Nested
+    @DisplayName("4. Testy odhlášení a zneplatnění JWT tokenu (Token Blacklist)")
+    class TokenBlacklistTests {
+
+        @Test
+        @DisplayName("Po odhlášení je token zneplatněn na blacklistu a další požadavek s tímto tokenem selže (401)")
+        void testTokenBlacklistAfterLogout() throws Exception {
+            Cookie userCookie = loginAndGetCookie(regularUser1.getEmail(), "password123");
+
+            // 1. Před odhlášením uživatel může přistupovat k /api/auth/me
+            mockMvc.perform(get("/api/auth/me")
+                            .cookie(userCookie))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.email").value(regularUser1.getEmail()));
+
+            // 2. Provedeme odhlášení s daným tokenem
+            mockMvc.perform(post("/api/auth/logout")
+                            .cookie(userCookie)
+                            .with(csrf()))
+                    .andExpect(status().isOk())
+                    .andExpect(cookie().maxAge("jwt_token", 0));
+
+            // 3. Pokus o opětovné použití původního (odhlášeného) tokenu musí být odmítnut (401)
+            mockMvc.perform(get("/api/auth/me")
+                            .cookie(userCookie))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
 }

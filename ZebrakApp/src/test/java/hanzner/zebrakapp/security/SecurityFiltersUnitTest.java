@@ -2,6 +2,7 @@ package hanzner.zebrakapp.security;
 
 import hanzner.zebrakapp.entity.Role;
 import hanzner.zebrakapp.entity.User;
+import hanzner.zebrakapp.service.TokenBlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -103,7 +104,9 @@ class SecurityFiltersUnitTest {
         @Mock
         private CustomUserDetailsService userDetailsService;
 
-        @InjectMocks
+        @Mock
+        private TokenBlacklistService tokenBlacklistService;
+
         private JwtAuthenticationFilter jwtFilter;
 
         private CustomUserDetails userDetails;
@@ -111,6 +114,7 @@ class SecurityFiltersUnitTest {
         @BeforeEach
         void setUp() {
             SecurityContextHolder.clearContext();
+            jwtFilter = new JwtAuthenticationFilter(tokenProvider, userDetailsService, tokenBlacklistService);
 
             User user = User.builder()
                     .id(1L)
@@ -137,6 +141,7 @@ class SecurityFiltersUnitTest {
             FilterChain filterChain = mock(FilterChain.class);
 
             when(tokenProvider.validateToken("valid.jwt.cookie")).thenReturn(true);
+            when(tokenBlacklistService.isBlacklisted("valid.jwt.cookie")).thenReturn(false);
             when(tokenProvider.getEmailFromToken("valid.jwt.cookie")).thenReturn("filter.user@test.cz");
             when(userDetailsService.loadUserByUsername("filter.user@test.cz")).thenReturn(userDetails);
 
@@ -156,6 +161,7 @@ class SecurityFiltersUnitTest {
             FilterChain filterChain = mock(FilterChain.class);
 
             when(tokenProvider.validateToken("valid.jwt.header")).thenReturn(true);
+            when(tokenBlacklistService.isBlacklisted("valid.jwt.header")).thenReturn(false);
             when(tokenProvider.getEmailFromToken("valid.jwt.header")).thenReturn("filter.user@test.cz");
             when(userDetailsService.loadUserByUsername("filter.user@test.cz")).thenReturn(userDetails);
 
@@ -174,6 +180,23 @@ class SecurityFiltersUnitTest {
             FilterChain filterChain = mock(FilterChain.class);
 
             when(tokenProvider.validateToken("bad.token")).thenReturn(false);
+
+            jwtFilter.doFilter(request, response, filterChain);
+
+            assertNull(SecurityContextHolder.getContext().getAuthentication());
+            verify(filterChain, times(1)).doFilter(request, response);
+        }
+
+        @Test
+        @DisplayName("Zneplatněný (blacklisted) token nenastaví autentizaci")
+        void testFilter_BlacklistedToken_DoesNotAuthenticate() throws ServletException, IOException {
+            MockHttpServletRequest request = new MockHttpServletRequest();
+            request.addHeader("Authorization", "Bearer blacklisted.token");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            FilterChain filterChain = mock(FilterChain.class);
+
+            when(tokenProvider.validateToken("blacklisted.token")).thenReturn(true);
+            when(tokenBlacklistService.isBlacklisted("blacklisted.token")).thenReturn(true);
 
             jwtFilter.doFilter(request, response, filterChain);
 

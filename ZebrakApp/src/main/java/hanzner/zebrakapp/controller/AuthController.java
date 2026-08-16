@@ -38,6 +38,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtTokenProvider tokenProvider;
+    private final hanzner.zebrakapp.service.TokenBlacklistService tokenBlacklistService;
 
     /**
      * Registrace nového uživatele do systému.
@@ -86,23 +87,46 @@ public class AuthController {
     }
 
     /**
-     * Odhlášení uživatele (odstranění autentizační cookie).
+     * Odhlášení uživatele (zneplatnění tokenu v blacklistu a odstranění cookie).
      */
     @Operation(
             summary = "Odhlášení uživatele",
-            description = "Smaže autentizační JWT cookie v prohlížeči klienta."
+            description = "Zneplatní aktivní JWT token (zařadí jej na blacklist v Redisu do doby přirozené expirace) a smaže autentizační cookie."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Uživatel byl úspěšně odhlášen",
                     content = @Content(mediaType = "application/json"))
     })
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout() {
+    public ResponseEntity<Map<String, String>> logout(jakarta.servlet.http.HttpServletRequest request) {
+        String token = extractJwt(request);
+        if (token != null) {
+            long remainingMs = tokenProvider.getRemainingExpirationMs(token);
+            if (remainingMs > 0) {
+                tokenBlacklistService.blacklistToken(token, java.time.Duration.ofMillis(remainingMs));
+            }
+        }
+
         ResponseCookie cleanCookie = tokenProvider.createCleanJwtCookie();
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cleanCookie.toString())
                 .body(Map.of("message", "Úspěšně odhlášeno"));
+    }
+
+    private String extractJwt(jakarta.servlet.http.HttpServletRequest request) {
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("jwt_token".equals(cookie.getName()) && org.springframework.util.StringUtils.hasText(cookie.getValue())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        String bearer = request.getHeader("Authorization");
+        if (org.springframework.util.StringUtils.hasText(bearer) && bearer.startsWith("Bearer ")) {
+            return bearer.substring(7);
+        }
+        return null;
     }
 
     /**

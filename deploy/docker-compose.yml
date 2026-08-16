@@ -17,7 +17,18 @@ services:
       timeout: 5s
       retries: 5
     networks:
-        - zebrak-net
+      - zebrak-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: zebrak-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - zebrak-net
 
   backend:
     build:
@@ -28,10 +39,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/zebrakdb
       DB_USERNAME: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       UPLOAD_DIR: /app/uploads
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGINS: http://localhost,http://localhost:80,http://localhost:4200
@@ -72,6 +87,7 @@ services:
 volumes:
   pgdata:
   uploads:
+  redisdata:
 
 networks:
   zebrak-net:
