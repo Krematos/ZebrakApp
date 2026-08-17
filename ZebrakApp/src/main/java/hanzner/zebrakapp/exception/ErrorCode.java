@@ -13,6 +13,7 @@ public enum ErrorCode {
     FILE_STORAGE_ERROR("Chyba při práci se souborovým úložištěm", HttpStatus.INTERNAL_SERVER_ERROR),
     UNAUTHORIZED_ACCESS("Nemáte oprávnění k provedení této operace", HttpStatus.FORBIDDEN),
     RATE_LIMIT_EXCEEDED("Příliš mnoho požadavků. Počkejte prosím chvíli před vytvořením dalšího místa.", HttpStatus.TOO_MANY_REQUESTS),
+    INVALID_PASSWORD("Zadané heslo není správné", HttpStatus.BAD_REQUEST),
     PAYLOAD_TOO_LARGE("Velikost nahraného souboru překročila maximální povolený limit", HttpStatus.PAYLOAD_TOO_LARGE),
     VALIDATION_ERROR("Chyba validace vstupních dat", HttpStatus.BAD_REQUEST),
     INTERNAL_SERVER_ERROR("Došlo k neočekávané chybě serveru", HttpStatus.INTERNAL_SERVER_ERROR);

@@ -8,4 +8,8 @@ public class UserNotFoundException extends BaseException {
     public UserNotFoundException(String message) {
         super(ErrorCode.USER_NOT_FOUND, message);
     }
+
+    public UserNotFoundException(Long id) {
+        super(ErrorCode.USER_NOT_FOUND, "Uživatel s ID " + id + " nebyl nalezen.");
+    }
 }

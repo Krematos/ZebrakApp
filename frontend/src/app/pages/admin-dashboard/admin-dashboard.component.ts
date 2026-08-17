@@ -6,6 +6,7 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Place } from '../../core/models/place.model';
+import { User } from '../../core/models/auth.model';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -51,6 +52,13 @@ import { Place } from '../../core/models/place.model';
           >
             ❌ Zamítnutá místa
           </button>
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === 'USERS'"
+            (click)="switchTab('USERS')"
+          >
+            👥 Správa uživatelů
+          </button>
         </div>
 
         <!-- Notification Message -->
@@ -72,17 +80,55 @@ import { Place } from '../../core/models/place.model';
           </button>
         </div>
 
-        <!-- Pending Queue / Place List -->
+        <!-- Loading State -->
         <div *ngIf="isLoading()" class="loading-state">
           <div class="spinner"></div>
           <p>Načítám záznamy...</p>
         </div>
 
-        <div *ngIf="!isLoading() && !hasError() && displayPlaces().length === 0" class="empty-state">
+        <!-- USERS View -->
+        <div *ngIf="!isLoading() && activeTab() === 'USERS'" class="users-section">
+          <div *ngIf="users().length === 0 && !hasError()" class="empty-state">
+            <p>Žádní registrovaní uživatelé.</p>
+          </div>
+
+          <div *ngIf="users().length > 0" class="users-list">
+            <div *ngFor="let u of users()" class="user-row-card">
+              <div class="user-main-info">
+                <div class="user-avatar-sm">{{ u.nickname.charAt(0).toUpperCase() }}</div>
+                <div class="user-text">
+                  <span class="u-name">{{ u.nickname }}</span>
+                  <span class="u-email">{{ u.email }}</span>
+                </div>
+                <span class="badge" [class.badge-admin]="u.role === 'ROLE_ADMIN'" [class.badge-user]="u.role === 'ROLE_USER'">
+                  {{ u.role === 'ROLE_ADMIN' ? 'Administrátor' : 'Uživatel' }}
+                </span>
+                <span class="u-date">Registrován: {{ u.createdAt | date:'d. M. yyyy' }}</span>
+              </div>
+
+              <div class="user-actions">
+                <button
+                  *ngIf="u.id !== authService.currentUser()?.id"
+                  class="btn btn-sm btn-danger"
+                  (click)="deleteUser(u)"
+                  title="Smazat uživatele (Soft Delete)"
+                >
+                  🗑️ Smazat účet
+                </button>
+                <span *ngIf="u.id === authService.currentUser()?.id" class="current-user-badge">
+                  (Váš účet)
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Places Queue / Place List -->
+        <div *ngIf="!isLoading() && activeTab() !== 'USERS' && !hasError() && displayPlaces().length === 0" class="empty-state">
           <p>Žádná místa v této kategorii.</p>
         </div>
 
-        <div *ngIf="!isLoading() && displayPlaces().length > 0" class="places-grid">
+        <div *ngIf="!isLoading() && activeTab() !== 'USERS' && displayPlaces().length > 0" class="places-grid">
           <div *ngFor="let place of displayPlaces()" class="admin-card">
             <div class="admin-card-header">
               <div class="header-badges">
@@ -114,6 +160,9 @@ import { Place } from '../../core/models/place.model';
                 </p>
                 <p *ngIf="place.author" class="card-author">
                   Zadal uživatel: <strong>{{ place.author.nickname }}</strong> ({{ place.author.email }})
+                </p>
+                <p *ngIf="!place.author" class="card-author">
+                  Zadal uživatel: <em>Bývalý / anonymní uživatel</em>
                 </p>
                 <p *ngIf="place.rejectionReason" class="card-rejection">
                   Důvod zamítnutí: <em>{{ place.rejectionReason }}</em>
@@ -411,6 +460,76 @@ import { Place } from '../../core/models/place.model';
     .reject-modal {
       max-width: 480px;
     }
+    .users-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .users-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .user-row-card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .user-main-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .user-avatar-sm {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--primary-600);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .user-text {
+      display: flex;
+      flex-direction: column;
+    }
+    .u-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-main);
+    }
+    .u-email {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+    .badge-admin {
+      background: #fef3c7;
+      color: #b45309;
+    }
+    .badge-user {
+      background: #e2e8f0;
+      color: #475569;
+    }
+    .u-date {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+    .current-user-badge {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-style: italic;
+    }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(-4px); }
       to { opacity: 1; transform: translateY(0); }
@@ -422,9 +541,10 @@ export class AdminDashboardComponent implements OnInit {
   private toastService = inject(ToastService);
   readonly authService = inject(AuthService);
 
-  readonly activeTab = signal<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+  readonly activeTab = signal<'PENDING' | 'APPROVED' | 'REJECTED' | 'USERS'>('PENDING');
   readonly pendingPlaces = signal<Place[]>([]);
   readonly displayPlaces = signal<Place[]>([]);
+  readonly users = signal<User[]>([]);
   readonly isLoading = signal(false);
   readonly hasError = signal(false);
   readonly statusMessage = signal<string | null>(null);
@@ -436,7 +556,7 @@ export class AdminDashboardComponent implements OnInit {
     this.loadData();
   }
 
-  switchTab(tab: 'PENDING' | 'APPROVED' | 'REJECTED'): void {
+  switchTab(tab: 'PENDING' | 'APPROVED' | 'REJECTED' | 'USERS'): void {
     this.activeTab.set(tab);
     this.loadData();
   }
@@ -451,18 +571,47 @@ export class AdminDashboardComponent implements OnInit {
       error: () => {},
     });
 
-    this.apiService.getAllPlacesAdmin(this.activeTab()).subscribe({
-      next: (res) => {
-        this.displayPlaces.set(res);
-        this.isLoading.set(false);
-        this.hasError.set(false);
-      },
-      error: () => {
-        this.isLoading.set(false);
-        this.hasError.set(true);
-        this.toastService.error('Nepodařilo se načíst data administrace.', 'Chyba serveru');
-      },
-    });
+    if (this.activeTab() === 'USERS') {
+      this.apiService.getAdminUsers().subscribe({
+        next: (res) => {
+          this.users.set(res);
+          this.isLoading.set(false);
+          this.hasError.set(false);
+        },
+        error: () => {
+          this.isLoading.set(false);
+          this.hasError.set(true);
+          this.toastService.error('Nepodařilo se načíst uživatele.', 'Chyba serveru');
+        },
+      });
+    } else {
+      this.apiService.getAllPlacesAdmin(this.activeTab()).subscribe({
+        next: (res) => {
+          this.displayPlaces.set(res);
+          this.isLoading.set(false);
+          this.hasError.set(false);
+        },
+        error: () => {
+          this.isLoading.set(false);
+          this.hasError.set(true);
+          this.toastService.error('Nepodařilo se načíst data administrace.', 'Chyba serveru');
+        },
+      });
+    }
+  }
+
+  deleteUser(u: User): void {
+    if (confirm(`Opravdu chcete smazat (soft delete) uživatelský účet "${u.nickname}" (${u.email})?`)) {
+      this.apiService.deleteUserByAdmin(u.id).subscribe({
+        next: () => {
+          this.toastService.success(`Uživatel "${u.nickname}" byl označen jako smazaný.`);
+          this.loadData();
+        },
+        error: (err) => {
+          this.toastService.error(err.error?.message || 'Smazání uživatele se nezdařilo.');
+        },
+      });
+    }
   }
 
   approve(place: Place): void {

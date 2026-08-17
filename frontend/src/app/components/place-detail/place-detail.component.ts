@@ -134,6 +134,7 @@ import { AuthService } from '../../core/services/auth.service';
         <div class="detail-footer">
           <div class="author-info">
             <span *ngIf="place.author">Vložil: <strong>{{ place.author.nickname }}</strong></span>
+            <span *ngIf="!place.author">Vložil: <em>Bývalý / anonymní uživatel</em></span>
             <span class="created-date">{{ place.createdAt | date:'d. M. yyyy' }}</span>
           </div>
 

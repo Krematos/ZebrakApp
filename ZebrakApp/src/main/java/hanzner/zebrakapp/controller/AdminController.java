@@ -3,8 +3,11 @@ package hanzner.zebrakapp.controller;
 import hanzner.zebrakapp.config.OpenApiConfig;
 import hanzner.zebrakapp.dto.AdminPlaceActionRequest;
 import hanzner.zebrakapp.dto.PlaceResponse;
+import hanzner.zebrakapp.dto.UserDto;
 import hanzner.zebrakapp.entity.PlaceStatus;
+import hanzner.zebrakapp.security.CustomUserDetails;
 import hanzner.zebrakapp.service.AdminService;
+import hanzner.zebrakapp.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -17,6 +20,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,6 +37,7 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final UserService userService;
 
     /**
      * Získání všech míst čekajících na schválení (stav PENDING).
@@ -142,6 +147,50 @@ public class AdminController {
             @PathVariable Long id
     ) {
         adminService.deletePlace(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Získání všech uživatelů v systému.
+     */
+    @Operation(
+            summary = "Seznam uživatelů",
+            description = "Vrátí seznam všech aktivních registrovaných uživatelů."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Seznam uživatelů úspěšně načten",
+                    content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = UserDto.class)))),
+            @ApiResponse(responseCode = "403", description = "Přístup odepřen - vyžadována role ROLE_ADMIN",
+                    content = @Content(mediaType = "application/json"))
+    })
+    @GetMapping("/users")
+    public ResponseEntity<List<UserDto>> getAllUsers() {
+        return ResponseEntity.ok(userService.getAllUsers());
+    }
+
+    /**
+     * Smazání uživatele administrátorem (Soft Delete).
+     */
+    @Operation(
+            summary = "Smazání uživatele (Soft Delete)",
+            description = "Označí uživatelský účet jako smazaný. Administrátor nemůže smazat svůj vlastní účet přes tento endpoint."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Uživatel byl úspěšně označen jako smazaný"),
+            @ApiResponse(responseCode = "400", description = "Chybný požadavek (např. admin maže sám sebe)",
+                    content = @Content(mediaType = "application/json")),
+            @ApiResponse(responseCode = "403", description = "Přístup odepřen - vyžadována role ROLE_ADMIN",
+                    content = @Content(mediaType = "application/json")),
+            @ApiResponse(responseCode = "404", description = "Uživatel nebyl nalezen",
+                    content = @Content(mediaType = "application/json"))
+    })
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<Void> deleteUser(
+            @Parameter(description = "ID mazaného uživatele", example = "2")
+            @PathVariable Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails adminDetails
+    ) {
+        userService.deleteUserByAdmin(id, adminDetails != null ? adminDetails.getUser() : null);
         return ResponseEntity.noContent().build();
     }
 }

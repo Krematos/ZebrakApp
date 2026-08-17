@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { User } from '../models/auth.model';
 import {
   CategoryInfo,
   CategoryType,
@@ -77,6 +78,12 @@ export class ApiService {
     return this.http.get<Place[]>(`${this.baseUrl}/users/my-places`);
   }
 
+  deleteMyAccount(password: string): Observable<void> {
+    return this.http.request<void>('delete', `${this.baseUrl}/users/me`, {
+      body: { password }
+    });
+  }
+
   // Administrace
   getPendingPlaces(): Observable<Place[]> {
     return this.http.get<Place[]>(`${this.baseUrl}/admin/places/pending`);
@@ -98,6 +105,14 @@ export class ApiService {
 
   deletePlace(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/admin/places/${id}`);
+  }
+
+  getAdminUsers(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.baseUrl}/admin/users`);
+  }
+
+  deleteUserByAdmin(userId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/admin/users/${userId}`);
   }
 
   // Metadata

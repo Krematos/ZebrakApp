@@ -5,8 +5,10 @@ import hanzner.zebrakapp.dto.AdminPlaceActionRequest;
 import hanzner.zebrakapp.dto.PlaceResponse;
 import hanzner.zebrakapp.entity.Category;
 import hanzner.zebrakapp.entity.PlaceStatus;
+import hanzner.zebrakapp.entity.Role;
 import hanzner.zebrakapp.exception.PlaceNotFoundException;
 import hanzner.zebrakapp.service.AdminService;
+import hanzner.zebrakapp.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,6 +34,9 @@ class AdminControllerUnitTest {
 
     @Mock
     private AdminService adminService;
+
+    @Mock
+    private UserService userService;
 
     @InjectMocks
     private AdminController adminController;
@@ -184,6 +189,41 @@ class AdminControllerUnitTest {
             mockMvc.perform(delete("/api/admin/places/999"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.errorCode").value("PLACE_NOT_FOUND"));
+        }
+    }
+
+    @Nested
+    @DisplayName("Správa uživatelů (/api/admin/users)")
+    class UserManagementTests {
+
+        @Test
+        @DisplayName("GET /api/admin/users vrátí seznam všech uživatelů")
+        void testGetAllUsers_Success() throws Exception {
+            hanzner.zebrakapp.dto.UserDto userDto = hanzner.zebrakapp.dto.UserDto.builder()
+                    .id(1L)
+                    .email("user@example.cz")
+                    .nickname("BeznyUser")
+                    .role(Role.ROLE_USER)
+                    .build();
+
+            when(userService.getAllUsers()).thenReturn(List.of(userDto));
+
+            mockMvc.perform(get("/api/admin/users"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(1))
+                    .andExpect(jsonPath("$[0].id").value(1))
+                    .andExpect(jsonPath("$[0].nickname").value("BeznyUser"));
+        }
+
+        @Test
+        @DisplayName("DELETE /api/admin/users/{id} úspěšně smaže uživatele")
+        void testDeleteUser_Success() throws Exception {
+            doNothing().when(userService).deleteUserByAdmin(eq(2L), any());
+
+            mockMvc.perform(delete("/api/admin/users/2"))
+                    .andExpect(status().isNoContent());
+
+            verify(userService, times(1)).deleteUserByAdmin(eq(2L), any());
         }
     }
 }

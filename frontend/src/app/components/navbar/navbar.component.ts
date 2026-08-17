@@ -1,12 +1,13 @@
-import { Component, EventEmitter, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { ProfileModalComponent } from '../profile-modal/profile-modal.component';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, ProfileModalComponent],
   template: `
     <header class="navbar">
       <div class="nav-container">
@@ -39,10 +40,10 @@ import { AuthService } from '../../core/services/auth.service';
           <!-- User Logged in -->
           <ng-container *ngIf="authService.currentUser() as user; else guestTpl">
             <div class="user-menu">
-              <a routerLink="/my-places" class="user-pill" title="Moje zadaná místa">
+              <button class="user-pill-btn" (click)="showProfileModal.set(true)" title="Můj profil a správa účtu">
                 <span class="user-avatar">{{ user.nickname.charAt(0).toUpperCase() }}</span>
                 <span class="user-name">{{ user.nickname }}</span>
-              </a>
+              </button>
               <button class="btn btn-secondary logout-btn" (click)="authService.logout()" title="Odhlásit se">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -66,6 +67,12 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
       </div>
     </header>
+
+    <!-- Profile & Account Management Modal -->
+    <app-profile-modal
+      *ngIf="showProfileModal()"
+      (close)="showProfileModal.set(false)"
+    ></app-profile-modal>
   `,
   styles: [`
     .navbar {
@@ -150,7 +157,7 @@ import { AuthService } from '../../core/services/auth.service';
       align-items: center;
       gap: 0.5rem;
     }
-    .user-pill {
+    .user-pill, .user-pill-btn {
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -162,10 +169,13 @@ import { AuthService } from '../../core/services/auth.service';
       color: var(--text-main);
       font-size: 0.875rem;
       font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
       transition: all var(--transition-fast);
     }
-    .user-pill:hover {
+    .user-pill:hover, .user-pill-btn:hover {
       background: #e2e8f0;
+      border-color: #cbd5e1;
     }
     .user-avatar {
       width: 28px;
@@ -201,6 +211,8 @@ import { AuthService } from '../../core/services/auth.service';
 })
 export class NavbarComponent {
   readonly authService = inject(AuthService);
+
+  readonly showProfileModal = signal(false);
 
   @Output() openAuthModal = new EventEmitter<void>();
   @Output() openAddPlaceModal = new EventEmitter<void>();

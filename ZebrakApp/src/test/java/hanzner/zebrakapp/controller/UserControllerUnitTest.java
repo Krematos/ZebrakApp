@@ -1,12 +1,16 @@
 package hanzner.zebrakapp.controller;
 
+import hanzner.zebrakapp.dto.DeleteAccountRequest;
 import hanzner.zebrakapp.dto.PlaceResponse;
 import hanzner.zebrakapp.entity.Category;
 import hanzner.zebrakapp.entity.PlaceStatus;
 import hanzner.zebrakapp.entity.Role;
 import hanzner.zebrakapp.entity.User;
+import hanzner.zebrakapp.exception.InvalidPasswordException;
 import hanzner.zebrakapp.security.CustomUserDetails;
+import hanzner.zebrakapp.security.JwtTokenProvider;
 import hanzner.zebrakapp.service.PlaceService;
+import hanzner.zebrakapp.service.UserService;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,6 +20,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.MethodParameter;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -23,11 +29,14 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -38,11 +47,18 @@ class UserControllerUnitTest {
     @Mock
     private PlaceService placeService;
 
+    @Mock
+    private UserService userService;
+
+    @Mock
+    private JwtTokenProvider jwtTokenProvider;
+
     @InjectMocks
     private UserController userController;
 
     private MockMvc mockMvc;
     private CustomUserDetails userPrincipal;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
@@ -91,5 +107,35 @@ class UserControllerUnitTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(5))
                 .andExpect(jsonPath("$[0].title").value("Moje oblíbené potraviny"));
+    }
+
+    @Test
+    @DisplayName("DELETE /api/users/me úspěšně smaže účet (204 No Content)")
+    void testDeleteMyAccount_Success() throws Exception {
+        DeleteAccountRequest request = new DeleteAccountRequest("spravneHeslo123");
+        when(jwtTokenProvider.createCleanJwtCookie()).thenReturn(
+                ResponseCookie.from("jwt_token", "").maxAge(0).build()
+        );
+
+        mockMvc.perform(delete("/api/users/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        verify(userService, times(1)).deleteMyAccount(any(User.class), eq(request), any());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/users/me se špatným heslem vrátí 400 Bad Request")
+    void testDeleteMyAccount_WrongPassword_Returns400() throws Exception {
+        DeleteAccountRequest request = new DeleteAccountRequest("spatneHeslo");
+        doThrow(new InvalidPasswordException("Zadané heslo není správné."))
+                .when(userService).deleteMyAccount(any(User.class), eq(request), any());
+
+        mockMvc.perform(delete("/api/users/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Zadané heslo není správné."));
     }
 }
