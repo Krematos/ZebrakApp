@@ -27,7 +27,7 @@ public class UserCleanupScheduledTask {
     @Scheduled(cron = "${app.cleanup.cron:0 0 3 * * ?}")
     @Transactional
     public void cleanupExpiredAccounts() {
-        Instant cutoffDate = Instant.now().minus(30);
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
         log.info("Spouštím pravidelné čištění expirovaných soft-deleted uživatelů (starších než {})", cutoffDate);
 
         List<User> expiredUsers = userRepository.findExpiredSoftDeletedUsers(cutoffDate);

@@ -3,6 +3,7 @@ package hanzner.zebrakapp.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hanzner.zebrakapp.dto.AdminPlaceActionRequest;
 import hanzner.zebrakapp.dto.AuthRequest;
+import hanzner.zebrakapp.dto.DeleteAccountRequest;
 import hanzner.zebrakapp.dto.PlaceCreateRequest;
 import hanzner.zebrakapp.dto.PlaceUpdateRequest;
 import hanzner.zebrakapp.dto.RegisterRequest;
@@ -211,6 +212,48 @@ public class DtoValidationTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(longPassReq)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors.password").exists());
+    }
+
+    @Test
+    @DisplayName("PlaceCreateRequest: Neplatné souřadnice (lat mimo [-90, 90] nebo lng mimo [-180, 180]) selžou")
+    void testPlaceCreate_InvalidCoordinates_IsRejected() throws Exception {
+        PlaceCreateRequest request = PlaceCreateRequest.builder()
+                .title("Platný název")
+                .category(Category.FOOD)
+                .priceLevel(PriceLevel.LOW)
+                .discountType(DiscountType.PERMANENT)
+                .address("Adresa 1")
+                .city("Praha")
+                .latitude(95.5) // Neplatná latitude (> 90)
+                .longitude(195.0) // Neplatná longitude (> 180)
+                .build();
+
+        mockMvc.perform(post("/api/places")
+                        .with(csrf())
+                        .cookie(authCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors.latitude").exists())
+                .andExpect(jsonPath("$.errors.longitude").exists());
+    }
+
+    @Test
+    @DisplayName("DeleteAccountRequest: Příliš dlouhé heslo (> 100 znaků) selže s chybou validace (400)")
+    void testDeleteAccount_PasswordTooLong_IsRejected() throws Exception {
+        DeleteAccountRequest request = DeleteAccountRequest.builder()
+                .password("P".repeat(101))
+                .build();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/users/me")
+                        .with(csrf())
+                        .cookie(authCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.errors.password").exists());

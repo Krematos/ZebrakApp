@@ -4,6 +4,8 @@ import hanzner.zebrakapp.entity.Category;
 import hanzner.zebrakapp.entity.DiscountType;
 import hanzner.zebrakapp.entity.PriceLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -56,10 +58,14 @@ public class PlaceUpdateRequest {
 
     @Schema(description = "Zeměpisná šířka (latitude)", example = "50.0755", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "Zeměpisná šířka (latitude) je povinná")
+    @DecimalMin(value = "-90.0", message = "Zeměpisná šířka musí být v rozmezí -90.0 až 90.0")
+    @DecimalMax(value = "90.0", message = "Zeměpisná šířka musí být v rozmezí -90.0 až 90.0")
     private Double latitude;
 
     @Schema(description = "Zeměpisná délka (longitude)", example = "14.4378", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "Zeměpisná délka (longitude) je povinná")
+    @DecimalMin(value = "-180.0", message = "Zeměpisná délka musí být v rozmezí -180.0 až 180.0")
+    @DecimalMax(value = "180.0", message = "Zeměpisná délka musí být v rozmezí -180.0 až 180.0")
     private Double longitude;
 
     @Schema(description = "Otevírací doba", example = "Po-Pá 10:00 - 22:00, So-Ne 11:00 - 23:00")
