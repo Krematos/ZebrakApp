@@ -2,6 +2,7 @@ package hanzner.zebrakapp.controller;
 
 import hanzner.zebrakapp.config.OpenApiConfig;
 import hanzner.zebrakapp.dto.DeleteAccountRequest;
+import hanzner.zebrakapp.dto.PagedResponse;
 import hanzner.zebrakapp.dto.PlaceResponse;
 import hanzner.zebrakapp.security.CustomUserDetails;
 import hanzner.zebrakapp.security.JwtTokenProvider;
@@ -47,19 +48,33 @@ public class UserController {
      */
     @Operation(
             summary = "Seznam vlastních míst uživatele",
-            description = "Vrátí všechna místa vytvořená přihlášeným uživatelem bez ohledu na jejich schvalovací stav (PENDING, APPROVED, REJECTED)."
+            description = "Vrátí stránkovaný seznam všech míst vytvořených přihlášeným uživatelem bez ohledu na jejich schvalovací stav (PENDING, APPROVED, REJECTED)."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Seznam uživatelských míst úspěšně načten",
-                    content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = PlaceResponse.class)))),
+            @ApiResponse(responseCode = "200", description = "Stránkovaný seznam uživatelských míst úspěšně načten",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PagedResponse.class))),
             @ApiResponse(responseCode = "401", description = "Neautorizovaný přístup - vyžadováno přihlášení",
                     content = @Content(mediaType = "application/json"))
     })
     @GetMapping("/my-places")
-    public ResponseEntity<List<PlaceResponse>> getMyPlaces(
+    public ResponseEntity<PagedResponse<PlaceResponse>> getMyPlaces(
+            @Parameter(description = "Číslo stránky (od 0)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Počet položek na stránku (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") int size,
+
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        return ResponseEntity.ok(placeService.getUserPlaces(userDetails.getUser()));
+        int validatedPage = Math.max(0, page);
+        int validatedSize = Math.max(1, Math.min(size, 100));
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                validatedPage,
+                validatedSize,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
+        );
+
+        return ResponseEntity.ok(placeService.getUserPlaces(userDetails.getUser(), pageable));
     }
 
     /**

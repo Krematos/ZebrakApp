@@ -1,6 +1,7 @@
 package hanzner.zebrakapp.service;
 
 import hanzner.zebrakapp.dto.DeleteAccountRequest;
+import hanzner.zebrakapp.dto.PagedResponse;
 import hanzner.zebrakapp.dto.UserDto;
 import hanzner.zebrakapp.entity.User;
 import hanzner.zebrakapp.exception.InvalidPasswordException;
@@ -10,6 +11,10 @@ import hanzner.zebrakapp.repository.UserRepository;
 import hanzner.zebrakapp.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +62,16 @@ public class UserService {
 
         userRepository.delete(targetUser);
         log.info("Uživatel s ID {} byl soft-deleted administrátorem ID {}.", targetUserId, adminUser != null ? adminUser.getId() : null);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<UserDto> getAllUsers(Pageable pageable) {
+        Pageable effectivePageable = (pageable != null)
+                ? pageable
+                : PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<User> usersPage = userRepository.findAll(effectivePageable);
+        return PagedResponse.of(usersPage, authService::mapToUserDto);
     }
 
     @Transactional(readOnly = true)

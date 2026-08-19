@@ -173,7 +173,7 @@ public class InputSanitizationSecurityTest {
         mockMvc.perform(get("/api/places")
                         .param("q", "' OR 1=1 --"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
+                .andExpect(jsonPath("$.content").isArray());
 
         // 3. Ověření, že databáze v H2 je v pořádku a tabulky nebyly poškozeny
         List<?> places = placeRepository.findAll();

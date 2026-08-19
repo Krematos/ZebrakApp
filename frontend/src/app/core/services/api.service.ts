@@ -6,6 +6,7 @@ import {
   CategoryInfo,
   CategoryType,
   DiscountType,
+  PagedResponse,
   Place,
   PlaceCreatePayload,
   PriceLevelType,
@@ -31,7 +32,11 @@ export class ApiService {
     minLng?: number;
     maxLng?: number;
     q?: string;
-  }): Observable<Place[]> {
+    page?: number;
+    size?: number;
+    sortBy?: string;
+    sortDir?: string;
+  }): Observable<PagedResponse<Place>> {
     let httpParams = new HttpParams();
     if (params) {
       if (params.category) httpParams = httpParams.set('category', params.category);
@@ -42,8 +47,12 @@ export class ApiService {
       if (params.minLng != null) httpParams = httpParams.set('minLng', params.minLng.toString());
       if (params.maxLng != null) httpParams = httpParams.set('maxLng', params.maxLng.toString());
       if (params.q) httpParams = httpParams.set('q', params.q);
+      if (params.page != null) httpParams = httpParams.set('page', params.page.toString());
+      if (params.size != null) httpParams = httpParams.set('size', params.size.toString());
+      if (params.sortBy) httpParams = httpParams.set('sortBy', params.sortBy);
+      if (params.sortDir) httpParams = httpParams.set('sortDir', params.sortDir);
     }
-    return this.http.get<Place[]>(`${this.baseUrl}/places`, { params: httpParams });
+    return this.http.get<PagedResponse<Place>>(`${this.baseUrl}/places`, { params: httpParams });
   }
 
   getPlaceById(id: number): Observable<Place> {
@@ -74,8 +83,11 @@ export class ApiService {
     return this.http.post<VerificationResponse>(`${this.baseUrl}/places/${placeId}/verify`, { vote });
   }
 
-  getMyPlaces(): Observable<Place[]> {
-    return this.http.get<Place[]>(`${this.baseUrl}/users/my-places`);
+  getMyPlaces(page = 0, size = 20): Observable<PagedResponse<Place>> {
+    let httpParams = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    return this.http.get<PagedResponse<Place>>(`${this.baseUrl}/users/my-places`, { params: httpParams });
   }
 
   deleteMyAccount(password: string): Observable<void> {
@@ -85,14 +97,19 @@ export class ApiService {
   }
 
   // Administrace
-  getPendingPlaces(): Observable<Place[]> {
-    return this.http.get<Place[]>(`${this.baseUrl}/admin/places/pending`);
+  getPendingPlaces(page = 0, size = 20): Observable<PagedResponse<Place>> {
+    let httpParams = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    return this.http.get<PagedResponse<Place>>(`${this.baseUrl}/admin/places/pending`, { params: httpParams });
   }
 
-  getAllPlacesAdmin(status?: string): Observable<Place[]> {
-    let httpParams = new HttpParams();
+  getAllPlacesAdmin(status?: string, page = 0, size = 20): Observable<PagedResponse<Place>> {
+    let httpParams = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
     if (status) httpParams = httpParams.set('status', status);
-    return this.http.get<Place[]>(`${this.baseUrl}/admin/places`, { params: httpParams });
+    return this.http.get<PagedResponse<Place>>(`${this.baseUrl}/admin/places`, { params: httpParams });
   }
 
   approvePlace(id: number): Observable<Place> {
@@ -107,8 +124,11 @@ export class ApiService {
     return this.http.delete<void>(`${this.baseUrl}/admin/places/${id}`);
   }
 
-  getAdminUsers(): Observable<User[]> {
-    return this.http.get<User[]>(`${this.baseUrl}/admin/users`);
+  getAdminUsers(page = 0, size = 20): Observable<PagedResponse<User>> {
+    let httpParams = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    return this.http.get<PagedResponse<User>>(`${this.baseUrl}/admin/users`, { params: httpParams });
   }
 
   deleteUserByAdmin(userId: number): Observable<void> {

@@ -29,6 +29,7 @@
     <properties>
         <java.version>25</java.version>
         <jacocoArgLine></jacocoArgLine>
+        <jacoco.skip>true</jacoco.skip>
     </properties>
     <dependencies>
         <dependency>

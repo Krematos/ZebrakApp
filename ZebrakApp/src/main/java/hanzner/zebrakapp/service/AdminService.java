@@ -1,5 +1,6 @@
 package hanzner.zebrakapp.service;
 
+import hanzner.zebrakapp.dto.PagedResponse;
 import hanzner.zebrakapp.dto.PlaceResponse;
 import hanzner.zebrakapp.entity.Place;
 import hanzner.zebrakapp.entity.PlaceStatus;
@@ -7,11 +8,12 @@ import hanzner.zebrakapp.exception.PlaceNotFoundException;
 import hanzner.zebrakapp.repository.PlaceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,22 +25,26 @@ public class AdminService {
     private final ImageStorageService imageStorageService;
 
     @Transactional(readOnly = true)
-    public List<PlaceResponse> getPendingPlaces() {
-        return placeRepository.findByStatusOrderByCreatedAtDesc(PlaceStatus.PENDING)
-                .stream()
-                .map(p -> placeService.mapToPlaceResponse(p, null, null))
-                .toList();
+    public PagedResponse<PlaceResponse> getPendingPlaces(Pageable pageable) {
+        Pageable effectivePageable = (pageable != null)
+                ? pageable
+                : PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Place> page = placeRepository.findByStatusOrderByCreatedAtDesc(PlaceStatus.PENDING, effectivePageable);
+        return PagedResponse.of(page, p -> placeService.mapToPlaceResponse(p, null, null));
     }
 
     @Transactional(readOnly = true)
-    public List<PlaceResponse> getAllPlaces(PlaceStatus status) {
-        List<Place> places = status != null 
-                ? placeRepository.findByStatusOrderByCreatedAtDesc(status) 
-                : placeRepository.findAll();
+    public PagedResponse<PlaceResponse> getAllPlaces(PlaceStatus status, Pageable pageable) {
+        Pageable effectivePageable = (pageable != null)
+                ? pageable
+                : PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        return places.stream()
-                .map(p -> placeService.mapToPlaceResponse(p, null, null))
-                .toList();
+        Page<Place> page = (status != null)
+                ? placeRepository.findByStatusOrderByCreatedAtDesc(status, effectivePageable)
+                : placeRepository.findAll(effectivePageable);
+
+        return PagedResponse.of(page, p -> placeService.mapToPlaceResponse(p, null, null));
     }
 
     @Transactional

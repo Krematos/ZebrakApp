@@ -2,6 +2,7 @@ package hanzner.zebrakapp.controller;
 
 import hanzner.zebrakapp.config.OpenApiConfig;
 import hanzner.zebrakapp.dto.AdminPlaceActionRequest;
+import hanzner.zebrakapp.dto.PagedResponse;
 import hanzner.zebrakapp.dto.PlaceResponse;
 import hanzner.zebrakapp.dto.UserDto;
 import hanzner.zebrakapp.entity.PlaceStatus;
@@ -44,17 +45,31 @@ public class AdminController {
      */
     @Operation(
             summary = "Seznam míst ke schválení",
-            description = "Vrátí seznam všech míst se stavem PENDING, která čekají na posouzení administrátorem."
+            description = "Vrátí stránkovaný seznam všech míst se stavem PENDING, která čekají na posouzení administrátorem."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Seznam čekajících míst úspěšně načten",
-                    content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = PlaceResponse.class)))),
+            @ApiResponse(responseCode = "200", description = "Stránkovaný seznam čekajících míst úspěšně načten",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PagedResponse.class))),
             @ApiResponse(responseCode = "403", description = "Přístup odepřen - vyžadována role ROLE_ADMIN",
                     content = @Content(mediaType = "application/json"))
     })
     @GetMapping("/places/pending")
-    public ResponseEntity<List<PlaceResponse>> getPendingPlaces() {
-        return ResponseEntity.ok(adminService.getPendingPlaces());
+    public ResponseEntity<PagedResponse<PlaceResponse>> getPendingPlaces(
+            @Parameter(description = "Číslo stránky (od 0)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Počet položek na stránku (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        int validatedPage = Math.max(0, page);
+        int validatedSize = Math.max(1, Math.min(size, 100));
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                validatedPage,
+                validatedSize,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
+        );
+
+        return ResponseEntity.ok(adminService.getPendingPlaces(pageable));
     }
 
     /**
@@ -62,20 +77,34 @@ public class AdminController {
      */
     @Operation(
             summary = "Seznam všech míst se stavem",
-            description = "Vrátí všechna místa v systému s možností filtrování podle jejich stavu (PENDING, APPROVED, REJECTED)."
+            description = "Vrátí stránkovaný seznam všech míst v systému s možností filtrování podle jejich stavu (PENDING, APPROVED, REJECTED)."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Seznam míst úspěšně načten",
-                    content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = PlaceResponse.class)))),
+            @ApiResponse(responseCode = "200", description = "Stránkovaný seznam míst úspěšně načten",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PagedResponse.class))),
             @ApiResponse(responseCode = "403", description = "Přístup odepřen - vyžadována role ROLE_ADMIN",
                     content = @Content(mediaType = "application/json"))
     })
     @GetMapping("/places")
-    public ResponseEntity<List<PlaceResponse>> getAllPlaces(
+    public ResponseEntity<PagedResponse<PlaceResponse>> getAllPlaces(
             @Parameter(description = "Stav místa (PENDING, APPROVED, REJECTED)")
-            @RequestParam(required = false) PlaceStatus status
+            @RequestParam(required = false) PlaceStatus status,
+
+            @Parameter(description = "Číslo stránky (od 0)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Počet položek na stránku (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(adminService.getAllPlaces(status));
+        int validatedPage = Math.max(0, page);
+        int validatedSize = Math.max(1, Math.min(size, 100));
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                validatedPage,
+                validatedSize,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
+        );
+
+        return ResponseEntity.ok(adminService.getAllPlaces(status, pageable));
     }
 
     /**
@@ -155,17 +184,31 @@ public class AdminController {
      */
     @Operation(
             summary = "Seznam uživatelů",
-            description = "Vrátí seznam všech aktivních registrovaných uživatelů."
+            description = "Vrátí stránkovaný seznam všech aktivních registrovaných uživatelů."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Seznam uživatelů úspěšně načten",
-                    content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = UserDto.class)))),
+            @ApiResponse(responseCode = "200", description = "Stránkovaný seznam uživatelů úspěšně načten",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PagedResponse.class))),
             @ApiResponse(responseCode = "403", description = "Přístup odepřen - vyžadována role ROLE_ADMIN",
                     content = @Content(mediaType = "application/json"))
     })
     @GetMapping("/users")
-    public ResponseEntity<List<UserDto>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+    public ResponseEntity<PagedResponse<UserDto>> getAllUsers(
+            @Parameter(description = "Číslo stránky (od 0)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Počet položek na stránku (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        int validatedPage = Math.max(0, page);
+        int validatedSize = Math.max(1, Math.min(size, 100));
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                validatedPage,
+                validatedSize,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
+        );
+
+        return ResponseEntity.ok(userService.getAllUsers(pageable));
     }
 
     /**

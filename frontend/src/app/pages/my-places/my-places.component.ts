@@ -17,7 +17,7 @@ import { AddPlaceModalComponent } from '../../components/add-place-modal/add-pla
         <div class="header-container">
           <div>
             <a routerLink="/" class="back-link">← Zpět na mapu</a>
-            <h1>Moje přidaná místa</h1>
+            <h1>Moje přidaná místa ({{ totalElements() }})</h1>
           </div>
           <button class="btn btn-primary" (click)="openAddModal()">
             + Přidat další levné místo
@@ -100,6 +100,29 @@ import { AddPlaceModalComponent } from '../../components/add-place-modal/add-pla
             </div>
           </div>
         </div>
+
+        <!-- Pagination Bar -->
+        <div *ngIf="!isLoading() && totalPages() > 1" class="pagination-bar">
+          <button
+            class="pagination-btn"
+            [disabled]="!hasPrevious()"
+            (click)="goToPage(currentPage() - 1)"
+            aria-label="Předchozí stránka"
+          >
+            « Předchozí
+          </button>
+          <span class="pagination-info">
+            Strana <strong>{{ currentPage() + 1 }}</strong> z <strong>{{ totalPages() }}</strong>
+          </span>
+          <button
+            class="pagination-btn"
+            [disabled]="!hasNext()"
+            (click)="goToPage(currentPage() + 1)"
+            aria-label="Další stránka"
+          >
+            Další »
+          </button>
+        </div>
       </main>
 
       <!-- Add / Edit Modal -->
@@ -152,6 +175,8 @@ import { AddPlaceModalComponent } from '../../components/add-place-modal/add-pla
       margin: 0 auto;
       padding: 1.5rem;
       flex: 1;
+      display: flex;
+      flex-direction: column;
     }
 
     .error-banner {
@@ -228,6 +253,7 @@ import { AddPlaceModalComponent } from '../../components/add-place-modal/add-pla
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
       gap: 1.25rem;
+      margin-bottom: 1.5rem;
     }
     .user-place-card {
       background: #ffffff;
@@ -320,6 +346,44 @@ import { AddPlaceModalComponent } from '../../components/add-place-modal/add-pla
       gap: 0.5rem;
     }
 
+    .pagination-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg, 12px);
+      margin-top: auto;
+    }
+    .pagination-btn {
+      background: var(--bg-app);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-md, 8px);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .pagination-btn:hover:not(:disabled) {
+      background: var(--primary-50);
+      color: var(--primary-600);
+      border-color: var(--primary-200);
+    }
+    .pagination-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .pagination-info {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    .pagination-info strong {
+      color: var(--text-main);
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(-4px); }
       to { opacity: 1; transform: translateY(0); }
@@ -338,6 +402,13 @@ export class MyPlacesComponent implements OnInit {
   readonly showAddModal = signal(false);
   readonly editPlaceData = signal<Place | null>(null);
 
+  readonly currentPage = signal(0);
+  readonly pageSize = 20;
+  readonly totalElements = signal(0);
+  readonly totalPages = signal(1);
+  readonly hasPrevious = signal(false);
+  readonly hasNext = signal(false);
+
   ngOnInit(): void {
     this.loadData();
     this.apiService.getCategories().subscribe({
@@ -350,9 +421,13 @@ export class MyPlacesComponent implements OnInit {
     this.isLoading.set(true);
     this.hasError.set(false);
 
-    this.apiService.getMyPlaces().subscribe({
+    this.apiService.getMyPlaces(this.currentPage(), this.pageSize).subscribe({
       next: (res) => {
-        this.places.set(res);
+        this.places.set(res.content);
+        this.totalElements.set(res.totalElements);
+        this.totalPages.set(res.totalPages);
+        this.hasPrevious.set(res.hasPrevious);
+        this.hasNext.set(res.hasNext);
         this.isLoading.set(false);
         this.hasError.set(false);
       },
@@ -365,6 +440,13 @@ export class MyPlacesComponent implements OnInit {
         );
       },
     });
+  }
+
+  goToPage(page: number): void {
+    if (page >= 0 && page < this.totalPages()) {
+      this.currentPage.set(page);
+      this.loadData();
+    }
   }
 
   openAddModal(): void {

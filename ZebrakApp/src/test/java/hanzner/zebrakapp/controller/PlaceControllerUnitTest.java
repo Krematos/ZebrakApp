@@ -106,19 +106,24 @@ class PlaceControllerUnitTest {
     class SearchPlacesEndpointTests {
 
         @Test
-        @DisplayName("Vrátí seznam schválených míst a status 200 OK")
+        @DisplayName("Vrátí stránkovaný seznam schválených míst a status 200 OK")
         void testSearchPlaces_Success() throws Exception {
-            when(placeService.searchApprovedPlaces(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                    .thenReturn(List.of(samplePlaceResponse));
+            when(placeService.searchApprovedPlaces(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(PagedResponse.of(List.of(samplePlaceResponse), 0, 20, 1));
 
             mockMvc.perform(get("/api/places")
                             .param("category", "FOOD")
                             .param("priceLevel", "LOW")
-                            .param("q", "Levné"))
+                            .param("q", "Levné")
+                            .param("page", "0")
+                            .param("size", "20"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(1))
-                    .andExpect(jsonPath("$[0].id").value(10))
-                    .andExpect(jsonPath("$[0].title").value("Levné Potraviny"));
+                    .andExpect(jsonPath("$.content.length()").value(1))
+                    .andExpect(jsonPath("$.content[0].id").value(10))
+                    .andExpect(jsonPath("$.content[0].title").value("Levné Potraviny"))
+                    .andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.page").value(0))
+                    .andExpect(jsonPath("$.size").value(20));
         }
     }
 

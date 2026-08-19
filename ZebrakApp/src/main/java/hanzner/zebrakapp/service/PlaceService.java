@@ -106,7 +106,7 @@ public class PlaceService {
     }
 
     @Transactional(readOnly = true)
-    public List<PlaceResponse> searchApprovedPlaces(
+    public PagedResponse<PlaceResponse> searchApprovedPlaces(
             Category category,
             PriceLevel priceLevel,
             DiscountType discountType,
@@ -116,7 +116,8 @@ public class PlaceService {
             Double maxLng,
             String query,
             User currentUser,
-            String ipAddress
+            String ipAddress,
+            org.springframework.data.domain.Pageable pageable
     ) {
         String cleanedQuery = (query != null && !query.trim().isEmpty()) ? query.trim() : null;
 
@@ -132,22 +133,23 @@ public class PlaceService {
                 cleanedQuery
         );
 
-        List<Place> places = placeRepository.findAll(
-                spec,
-                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
-        );
+        org.springframework.data.domain.Pageable effectivePageable = (pageable != null)
+                ? pageable
+                : org.springframework.data.domain.PageRequest.of(0, 20, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
 
-        return places.stream()
-                .map(p -> mapToPlaceResponse(p, currentUser, ipAddress))
-                .toList();
+        org.springframework.data.domain.Page<Place> placesPage = placeRepository.findAll(spec, effectivePageable);
+
+        return PagedResponse.of(placesPage, p -> mapToPlaceResponse(p, currentUser, ipAddress));
     }
 
     @Transactional(readOnly = true)
-    public List<PlaceResponse> getUserPlaces(User currentUser) {
-        List<Place> places = placeRepository.findByUserIdOrderByCreatedAtDesc(currentUser.getId());
-        return places.stream()
-                .map(p -> mapToPlaceResponse(p, currentUser, null))
-                .toList();
+    public PagedResponse<PlaceResponse> getUserPlaces(User currentUser, org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Pageable effectivePageable = (pageable != null)
+                ? pageable
+                : org.springframework.data.domain.PageRequest.of(0, 20, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+
+        org.springframework.data.domain.Page<Place> placesPage = placeRepository.findByUserIdOrderByCreatedAtDesc(currentUser.getId(), effectivePageable);
+        return PagedResponse.of(placesPage, p -> mapToPlaceResponse(p, currentUser, null));
     }
 
     @Transactional

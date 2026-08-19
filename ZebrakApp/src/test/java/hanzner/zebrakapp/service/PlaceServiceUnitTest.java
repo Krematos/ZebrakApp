@@ -14,6 +14,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.mock.web.MockMultipartFile;
@@ -333,34 +335,39 @@ class PlaceServiceUnitTest {
 
         @Test
         @SuppressWarnings("unchecked")
-        @DisplayName("searchApprovedPlaces volá PlaceRepository se specifikací")
+        @DisplayName("searchApprovedPlaces volá PlaceRepository se specifikací a stránkováním")
         void testSearchApprovedPlaces_CallsRepo() {
-            when(placeRepository.findAll(any(Specification.class), any(Sort.class)))
-                    .thenReturn(List.of(existingPlace));
+            org.springframework.data.domain.Page<Place> page = new org.springframework.data.domain.PageImpl<>(List.of(existingPlace));
+            when(placeRepository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(page);
             when(authService.mapToUserDto(any())).thenReturn(UserDto.builder().id(1L).build());
 
-            List<PlaceResponse> results = placeService.searchApprovedPlaces(
+            PagedResponse<PlaceResponse> results = placeService.searchApprovedPlaces(
                     Category.FOOD, PriceLevel.LOW, DiscountType.PERMANENT,
-                    49.0, 51.0, 14.0, 16.0, "  potraviny  ", author, "127.0.0.1"
+                    49.0, 51.0, 14.0, 16.0, "  potraviny  ", author, "127.0.0.1",
+                    PageRequest.of(0, 20)
             );
 
             assertNotNull(results);
-            assertEquals(1, results.size());
-            verify(placeRepository, times(1)).findAll(any(Specification.class), any(Sort.class));
+            assertEquals(1, results.getContent().size());
+            assertEquals(1, results.getTotalElements());
+            verify(placeRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
         }
 
         @Test
-        @DisplayName("getUserPlaces vrátí všechna místa daného uživatele")
+        @DisplayName("getUserPlaces vrátí stránkovaná místa daného uživatele")
         void testGetUserPlaces_ReturnsList() {
-            when(placeRepository.findByUserIdOrderByCreatedAtDesc(1L))
-                    .thenReturn(List.of(existingPlace));
+            org.springframework.data.domain.Page<Place> page = new org.springframework.data.domain.PageImpl<>(List.of(existingPlace));
+            when(placeRepository.findByUserIdOrderByCreatedAtDesc(eq(1L), any(Pageable.class)))
+                    .thenReturn(page);
             when(authService.mapToUserDto(any())).thenReturn(UserDto.builder().id(1L).build());
 
-            List<PlaceResponse> results = placeService.getUserPlaces(author);
+            PagedResponse<PlaceResponse> results = placeService.getUserPlaces(author, PageRequest.of(0, 20));
 
             assertNotNull(results);
-            assertEquals(1, results.size());
-            verify(placeRepository, times(1)).findByUserIdOrderByCreatedAtDesc(1L);
+            assertEquals(1, results.getContent().size());
+            assertEquals(1, results.getTotalElements());
+            verify(placeRepository, times(1)).findByUserIdOrderByCreatedAtDesc(eq(1L), any(Pageable.class));
         }
     }
 

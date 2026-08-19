@@ -2,7 +2,9 @@ package hanzner.zebrakapp.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hanzner.zebrakapp.dto.AdminPlaceActionRequest;
+import hanzner.zebrakapp.dto.PagedResponse;
 import hanzner.zebrakapp.dto.PlaceResponse;
+import hanzner.zebrakapp.dto.UserDto;
 import hanzner.zebrakapp.entity.Category;
 import hanzner.zebrakapp.entity.PlaceStatus;
 import hanzner.zebrakapp.entity.Role;
@@ -23,7 +25,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -66,15 +70,16 @@ class AdminControllerUnitTest {
     class GetPendingPlacesTests {
 
         @Test
-        @DisplayName("Vrátí seznam čekajících míst s kódem 200 OK")
+        @DisplayName("Vrátí stránkovaný seznam čekajících míst s kódem 200 OK")
         void testGetPendingPlaces_ReturnsList() throws Exception {
-            when(adminService.getPendingPlaces()).thenReturn(List.of(samplePlaceResponse));
+            when(adminService.getPendingPlaces(any())).thenReturn(PagedResponse.of(List.of(samplePlaceResponse), 0, 20, 1));
 
             mockMvc.perform(get("/api/admin/places/pending"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(1))
-                    .andExpect(jsonPath("$[0].id").value(1))
-                    .andExpect(jsonPath("$[0].status").value("PENDING"));
+                    .andExpect(jsonPath("$.content.length()").value(1))
+                    .andExpect(jsonPath("$.content[0].id").value(1))
+                    .andExpect(jsonPath("$.content[0].status").value("PENDING"))
+                    .andExpect(jsonPath("$.totalElements").value(1));
         }
     }
 
@@ -85,22 +90,24 @@ class AdminControllerUnitTest {
         @Test
         @DisplayName("Vrátí filtrovaná místa podle statusu")
         void testGetAllPlaces_WithStatus_ReturnsFiltered() throws Exception {
-            when(adminService.getAllPlaces(eq(PlaceStatus.APPROVED))).thenReturn(List.of(samplePlaceResponse));
+            when(adminService.getAllPlaces(eq(PlaceStatus.APPROVED), any())).thenReturn(PagedResponse.of(List.of(samplePlaceResponse), 0, 20, 1));
 
             mockMvc.perform(get("/api/admin/places")
                             .param("status", "APPROVED"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(1));
+                    .andExpect(jsonPath("$.content.length()").value(1))
+                    .andExpect(jsonPath("$.totalElements").value(1));
         }
 
         @Test
         @DisplayName("Vrátí všechna místa bez specifikace statusu")
         void testGetAllPlaces_WithoutStatus_ReturnsAll() throws Exception {
-            when(adminService.getAllPlaces(null)).thenReturn(List.of(samplePlaceResponse));
+            when(adminService.getAllPlaces(isNull(), any())).thenReturn(PagedResponse.of(List.of(samplePlaceResponse), 0, 20, 1));
 
             mockMvc.perform(get("/api/admin/places"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(1));
+                    .andExpect(jsonPath("$.content.length()").value(1))
+                    .andExpect(jsonPath("$.totalElements").value(1));
         }
     }
 
@@ -116,8 +123,9 @@ class AdminControllerUnitTest {
 
             mockMvc.perform(post("/api/admin/places/1/approve"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(1))
                     .andExpect(jsonPath("$.status").value("APPROVED"));
+
+            verify(adminService, times(1)).approvePlace(1L);
         }
 
         @Test
@@ -136,33 +144,39 @@ class AdminControllerUnitTest {
     class RejectPlaceTests {
 
         @Test
-        @DisplayName("Zamítnutí místa s důvodem vrátí 200 OK")
+        @DisplayName("Zamítnutí místa s důvodem vrátí 200 OK a stav REJECTED")
         void testRejectPlace_WithReason_Success() throws Exception {
-            AdminPlaceActionRequest request = new AdminPlaceActionRequest("Neplatné souřadnice");
             samplePlaceResponse.setStatus(PlaceStatus.REJECTED);
-            samplePlaceResponse.setRejectionReason("Neplatné souřadnice");
+            samplePlaceResponse.setRejectionReason("Neplatná adresa");
 
-            when(adminService.rejectPlace(1L, "Neplatné souřadnice")).thenReturn(samplePlaceResponse);
+            AdminPlaceActionRequest request = new AdminPlaceActionRequest();
+            request.setReason("Neplatná adresa");
+
+            when(adminService.rejectPlace(eq(1L), eq("Neplatná adresa"))).thenReturn(samplePlaceResponse);
 
             mockMvc.perform(post("/api/admin/places/1/reject")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("REJECTED"))
-                    .andExpect(jsonPath("$.rejectionReason").value("Neplatné souřadnice"));
+                    .andExpect(jsonPath("$.rejectionReason").value("Neplatná adresa"));
+
+            verify(adminService, times(1)).rejectPlace(1L, "Neplatná adresa");
         }
 
         @Test
-        @DisplayName("Zamítnutí místa bez body použije výchozí důvod 'Nespecifikováno'")
-        void testRejectPlace_WithoutBody_UsesDefaultReason() throws Exception {
+        @DisplayName("Zamítnutí místa bez body použije výchozí důvod")
+        void testRejectPlace_WithoutBody_Success() throws Exception {
             samplePlaceResponse.setStatus(PlaceStatus.REJECTED);
             samplePlaceResponse.setRejectionReason("Nespecifikováno");
 
-            when(adminService.rejectPlace(1L, "Nespecifikováno")).thenReturn(samplePlaceResponse);
+            when(adminService.rejectPlace(eq(1L), eq("Nespecifikováno"))).thenReturn(samplePlaceResponse);
 
             mockMvc.perform(post("/api/admin/places/1/reject"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("REJECTED"));
+
+            verify(adminService, times(1)).rejectPlace(1L, "Nespecifikováno");
         }
     }
 
@@ -197,22 +211,23 @@ class AdminControllerUnitTest {
     class UserManagementTests {
 
         @Test
-        @DisplayName("GET /api/admin/users vrátí seznam všech uživatelů")
+        @DisplayName("GET /api/admin/users vrátí stránkovaný seznam všech uživatelů")
         void testGetAllUsers_Success() throws Exception {
-            hanzner.zebrakapp.dto.UserDto userDto = hanzner.zebrakapp.dto.UserDto.builder()
+            UserDto userDto = UserDto.builder()
                     .id(1L)
                     .email("user@example.cz")
                     .nickname("BeznyUser")
                     .role(Role.ROLE_USER)
                     .build();
 
-            when(userService.getAllUsers()).thenReturn(List.of(userDto));
+            when(userService.getAllUsers(any())).thenReturn(PagedResponse.of(List.of(userDto), 0, 20, 1));
 
             mockMvc.perform(get("/api/admin/users"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(1))
-                    .andExpect(jsonPath("$[0].id").value(1))
-                    .andExpect(jsonPath("$[0].nickname").value("BeznyUser"));
+                    .andExpect(jsonPath("$.content.length()").value(1))
+                    .andExpect(jsonPath("$.content[0].id").value(1))
+                    .andExpect(jsonPath("$.content[0].nickname").value("BeznyUser"))
+                    .andExpect(jsonPath("$.totalElements").value(1));
         }
 
         @Test

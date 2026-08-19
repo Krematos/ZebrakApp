@@ -1,6 +1,7 @@
 package hanzner.zebrakapp.controller;
 
 import hanzner.zebrakapp.dto.DeleteAccountRequest;
+import hanzner.zebrakapp.dto.PagedResponse;
 import hanzner.zebrakapp.dto.PlaceResponse;
 import hanzner.zebrakapp.entity.Category;
 import hanzner.zebrakapp.entity.PlaceStatus;
@@ -100,13 +101,14 @@ class UserControllerUnitTest {
                 .category(Category.FOOD)
                 .build();
 
-        when(placeService.getUserPlaces(any(User.class))).thenReturn(List.of(myPlace));
+        when(placeService.getUserPlaces(any(User.class), any())).thenReturn(PagedResponse.of(List.of(myPlace), 0, 20, 1));
 
         mockMvc.perform(get("/api/users/my-places"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(5))
-                .andExpect(jsonPath("$[0].title").value("Moje oblíbené potraviny"));
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(5))
+                .andExpect(jsonPath("$.content[0].title").value("Moje oblíbené potraviny"))
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test

@@ -202,7 +202,9 @@ public class SecurityIntegrationTest {
 
             mockMvc.perform(get("/api/admin/places/pending").cookie(adminCookie))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$").isArray());
+                    .andExpect(jsonPath("$.content").isArray())
+                    .andExpect(jsonPath("$.page").value(0))
+                    .andExpect(jsonPath("$.size").value(20));
         }
 
         @Test
@@ -308,7 +310,9 @@ public class SecurityIntegrationTest {
         void testSearchPlacesIsPublic() throws Exception {
             mockMvc.perform(get("/api/places"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$").isArray());
+                    .andExpect(jsonPath("$.content").isArray())
+                    .andExpect(jsonPath("$.page").value(0))
+                    .andExpect(jsonPath("$.size").value(20));
         }
 
         @Test

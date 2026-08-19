@@ -14,13 +14,19 @@ spring:
   docker:
     compose:
       enabled: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
 app:
   jwt:
-    secret: ${JWT_SECRET:testSecretKeyForTestingPurposesWith32CharsLong!}
+    secret: testSecretKeyForTestingPurposesWith32CharsLong!
     expiration-ms: 86400000
   upload:
     dir: target/test-uploads
+  cors:
+    allowed-origins: http://localhost:4200
   rate-limit:
     place-creation:
       min-interval-seconds: 0

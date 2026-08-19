@@ -44,21 +44,21 @@ public class PlaceController {
      */
     @Operation(
             summary = "Vyhledávání schválených míst a slev",
-            description = "Vrátí seznam schválených míst (APPROVED) s možností filtrování podle kategorie, cenové hladiny, typu slevy, souřadnicového obdélníku (bounding box pro mapu) a fulltextového vyhledávání."
+            description = "Vrátí stránkovaný seznam schválených míst (APPROVED) s možností filtrování podle kategorie, cenové hladiny, typu slevy, souřadnicového obdélníku (bounding box pro mapu), fulltextového vyhledávání a stránkování."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Seznam míst odpovídajících filtrům",
-                    content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = PlaceResponse.class))))
+            @ApiResponse(responseCode = "200", description = "Stránkovaný seznam míst odpovídajících filtrům",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PagedResponse.class)))
     })
     @GetMapping
-    public ResponseEntity<List<PlaceResponse>> searchPlaces(
-            @Parameter(description = "Kategorie podniku (např. RESTAURACE, PUB, FAST_FOOD, KAVARNA, ATD.)")
+    public ResponseEntity<PagedResponse<PlaceResponse>> searchPlaces(
+            @Parameter(description = "Kategorie podniku (např. FOOD, SECOND_HAND, OUTLET, ATD.)")
             @RequestParam(required = false) Category category,
 
-            @Parameter(description = "Cenová hladina (CHEAP, MEDIUM, EXPENSIVE)")
+            @Parameter(description = "Cenová hladina (LOW, MEDIUM, HIGH)")
             @RequestParam(required = false) PriceLevel priceLevel,
 
-            @Parameter(description = "Typ slevy / akce (PERCENT_OFF, FIXED_AMOUNT, ONE_PLUS_ONE, HAPPY_HOUR, STUDENT, LOYALTY, OTHER)")
+            @Parameter(description = "Typ slevy / akce (PERMANENT, ONE_TIME, ATD.)")
             @RequestParam(required = false) DiscountType discountType,
 
             @Parameter(description = "Minimální zeměpisná šířka pro výřez mapy (bounding box)")
@@ -76,6 +76,18 @@ public class PlaceController {
             @Parameter(description = "Vyhledávací textový dotaz (název, popis, město apod.)")
             @RequestParam(required = false) String q,
 
+            @Parameter(description = "Číslo stránky (od 0)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Počet položek na stránku (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") int size,
+
+            @Parameter(description = "Pole pro řazení", example = "createdAt")
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+
+            @Parameter(description = "Směr řazení (ASC, DESC)", example = "DESC")
+            @RequestParam(defaultValue = "DESC") String sortDir,
+
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails userDetails,
 
@@ -85,8 +97,20 @@ public class PlaceController {
         User currentUser = userDetails != null ? userDetails.getUser() : null;
         String ipAddress = request.getRemoteAddr();
 
-        List<PlaceResponse> places = placeService.searchApprovedPlaces(
-                category, priceLevel, discountType, minLat, maxLat, minLng, maxLng, q, currentUser, ipAddress
+        int validatedPage = Math.max(0, page);
+        int validatedSize = Math.max(1, Math.min(size, 100));
+        org.springframework.data.domain.Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir)
+                ? org.springframework.data.domain.Sort.Direction.ASC
+                : org.springframework.data.domain.Sort.Direction.DESC;
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                validatedPage,
+                validatedSize,
+                org.springframework.data.domain.Sort.by(direction, sortBy)
+        );
+
+        PagedResponse<PlaceResponse> places = placeService.searchApprovedPlaces(
+                category, priceLevel, discountType, minLat, maxLat, minLng, maxLng, q, currentUser, ipAddress, pageable
         );
         return ResponseEntity.ok(places);
     }

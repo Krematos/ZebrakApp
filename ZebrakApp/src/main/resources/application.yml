@@ -3,17 +3,17 @@ spring:
     name: ZebrakApp
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       timeout: 2000ms
   docker:
     compose:
-      enabled: ${DOCKER_COMPOSE_ENABLED}
+      enabled: ${DOCKER_COMPOSE_ENABLED:false}
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/zebrakdb}
+    username: ${DB_USERNAME:zebrakuser}
+    password: ${DB_PASSWORD:zebrakpass}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -34,16 +34,16 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET}
-    expiration-ms: ${JWT_EXPIRATION_MS}
+    secret: ${JWT_SECRET:testSecretKeyForTestingPurposesWith32CharsLong!}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   upload:
-    dir: ${UPLOAD_DIR}
+    dir: ${UPLOAD_DIR:uploads}
   cors:
-    allowed-origins: ${CORS_ORIGINS}
+    allowed-origins: ${CORS_ORIGINS:http://localhost:4200,http://localhost:80,http://localhost}
   rate-limit:
     place-creation:
-      min-interval-seconds: ${RATE_LIMIT_PLACE_MIN_INTERVAL}
-      max-requests-per-minute: ${RATE_LIMIT_PLACE_MAX_PER_MINUTE}
+      min-interval-seconds: ${RATE_LIMIT_PLACE_MIN_INTERVAL:0}
+      max-requests-per-minute: ${RATE_LIMIT_PLACE_MAX_PER_MINUTE:100}
 
 springdoc:
   swagger-ui:

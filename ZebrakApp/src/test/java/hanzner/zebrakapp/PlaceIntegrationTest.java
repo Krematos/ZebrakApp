@@ -1,5 +1,6 @@
 package hanzner.zebrakapp;
 
+import hanzner.zebrakapp.dto.PagedResponse;
 import hanzner.zebrakapp.dto.PlaceCreateRequest;
 import hanzner.zebrakapp.dto.PlaceResponse;
 import hanzner.zebrakapp.dto.VerificationResponse;
@@ -76,24 +77,24 @@ class PlaceIntegrationTest {
         assertEquals(PlaceStatus.PENDING, created.getStatus());
 
         // 2. Místo se zatím nezobrazí ve veřejném vyhledávání
-        List<PlaceResponse> publicPlaces = placeService.searchApprovedPlaces(
-                Category.FOOD, null, null, null, null, null, null, "Ovocné", regularUser, null
+        PagedResponse<PlaceResponse> publicPlaces = placeService.searchApprovedPlaces(
+                Category.FOOD, null, null, null, null, null, null, "Ovocné", regularUser, null, null
         );
-        assertTrue(publicPlaces.stream().noneMatch(p -> p.getId().equals(created.getId())));
+        assertTrue(publicPlaces.getContent().stream().noneMatch(p -> p.getId().equals(created.getId())));
 
         // 3. Admin vidí místo v čekárně (pending)
-        List<PlaceResponse> pendingPlaces = adminService.getPendingPlaces();
-        assertTrue(pendingPlaces.stream().anyMatch(p -> p.getId().equals(created.getId())));
+        PagedResponse<PlaceResponse> pendingPlaces = adminService.getPendingPlaces(null);
+        assertTrue(pendingPlaces.getContent().stream().anyMatch(p -> p.getId().equals(created.getId())));
 
         // 4. Admin schválí místo
         PlaceResponse approved = adminService.approvePlace(created.getId());
         assertEquals(PlaceStatus.APPROVED, approved.getStatus());
 
         // 5. Nyní je místo viditelné ve veřejném vyhledávání
-        List<PlaceResponse> approvedPlaces = placeService.searchApprovedPlaces(
-                Category.FOOD, null, null, null, null, null, null, "Ovocné", regularUser, null
+        PagedResponse<PlaceResponse> approvedPlaces = placeService.searchApprovedPlaces(
+                Category.FOOD, null, null, null, null, null, null, "Ovocné", regularUser, null, null
         );
-        assertTrue(approvedPlaces.stream().anyMatch(p -> p.getId().equals(created.getId())));
+        assertTrue(approvedPlaces.getContent().stream().anyMatch(p -> p.getId().equals(created.getId())));
 
         // 6. Ověření hlasování (STILL_OPEN)
         VerificationResponse voteResponse = placeService.verifyPlace(created.getId(), VoteType.STILL_OPEN, regularUser, "127.0.0.1");

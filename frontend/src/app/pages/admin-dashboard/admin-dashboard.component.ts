@@ -36,7 +36,7 @@ import { User } from '../../core/models/auth.model';
             [class.active]="activeTab() === 'PENDING'"
             (click)="switchTab('PENDING')"
           >
-            ⏳ Čekající na schválení ({{ pendingPlaces().length }})
+            ⏳ Čekající na schválení ({{ pendingTotal() }})
           </button>
           <button
             class="tab-btn"
@@ -161,9 +161,6 @@ import { User } from '../../core/models/auth.model';
                 <p *ngIf="place.author" class="card-author">
                   Zadal uživatel: <strong>{{ place.author.nickname }}</strong> ({{ place.author.email }})
                 </p>
-                <p *ngIf="!place.author" class="card-author">
-                  Zadal uživatel: <em>Bývalý / anonymní uživatel</em>
-                </p>
                 <p *ngIf="place.rejectionReason" class="card-rejection">
                   Důvod zamítnutí: <em>{{ place.rejectionReason }}</em>
                 </p>
@@ -198,6 +195,29 @@ import { User } from '../../core/models/auth.model';
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- Pagination Bar -->
+        <div *ngIf="!isLoading() && totalPages() > 1" class="pagination-bar">
+          <button
+            class="pagination-btn"
+            [disabled]="!hasPrevious()"
+            (click)="goToPage(currentPage() - 1)"
+            aria-label="Předchozí stránka"
+          >
+            « Předchozí
+          </button>
+          <span class="pagination-info">
+            Strana <strong>{{ currentPage() + 1 }}</strong> z <strong>{{ totalPages() }}</strong> (celkem {{ totalElements() }} položek)
+          </span>
+          <button
+            class="pagination-btn"
+            [disabled]="!hasNext()"
+            (click)="goToPage(currentPage() + 1)"
+            aria-label="Další stránka"
+          >
+            Další »
+          </button>
         </div>
       </main>
 
@@ -266,6 +286,8 @@ import { User } from '../../core/models/auth.model';
       margin: 0 auto;
       padding: 1.5rem;
       flex: 1;
+      display: flex;
+      flex-direction: column;
     }
     .admin-tabs {
       display: flex;
@@ -295,6 +317,7 @@ import { User } from '../../core/models/auth.model';
       display: flex;
       flex-direction: column;
       gap: 1rem;
+      margin-bottom: 1.5rem;
     }
     .admin-card {
       background: #ffffff;
@@ -437,7 +460,7 @@ import { User } from '../../core/models/auth.model';
       background: #b91c1c;
     }
 
-    .loading-state {
+    .loading-state, .empty-state {
       padding: 3rem 1.5rem;
       text-align: center;
       display: flex;
@@ -460,20 +483,56 @@ import { User } from '../../core/models/auth.model';
     .reject-modal {
       max-width: 480px;
     }
-    .users-section {
+
+    .pagination-bar {
       display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg, 12px);
+      margin-top: auto;
     }
+    .pagination-btn {
+      background: var(--bg-app);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-md, 8px);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .pagination-btn:hover:not(:disabled) {
+      background: var(--primary-50);
+      color: var(--primary-600);
+      border-color: var(--primary-200);
+    }
+    .pagination-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .pagination-info {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    .pagination-info strong {
+      color: var(--text-main);
+    }
+
+    /* Users list styles */
     .users-list {
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 0.875rem;
+      margin-bottom: 1.5rem;
     }
     .user-row-card {
       background: #ffffff;
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-md, 8px);
       padding: 1rem 1.25rem;
       display: flex;
       align-items: center;
@@ -490,9 +549,9 @@ import { User } from '../../core/models/auth.model';
     .user-avatar-sm {
       width: 38px;
       height: 38px;
+      background: var(--primary-100);
+      color: var(--primary-700);
       border-radius: 50%;
-      background: var(--primary-600);
-      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -542,12 +601,19 @@ export class AdminDashboardComponent implements OnInit {
   readonly authService = inject(AuthService);
 
   readonly activeTab = signal<'PENDING' | 'APPROVED' | 'REJECTED' | 'USERS'>('PENDING');
-  readonly pendingPlaces = signal<Place[]>([]);
+  readonly pendingTotal = signal(0);
   readonly displayPlaces = signal<Place[]>([]);
   readonly users = signal<User[]>([]);
   readonly isLoading = signal(false);
   readonly hasError = signal(false);
   readonly statusMessage = signal<string | null>(null);
+
+  readonly currentPage = signal(0);
+  readonly pageSize = 20;
+  readonly totalElements = signal(0);
+  readonly totalPages = signal(1);
+  readonly hasPrevious = signal(false);
+  readonly hasNext = signal(false);
 
   readonly rejectingPlace = signal<Place | null>(null);
   rejectionReasonText = '';
@@ -558,6 +624,7 @@ export class AdminDashboardComponent implements OnInit {
 
   switchTab(tab: 'PENDING' | 'APPROVED' | 'REJECTED' | 'USERS'): void {
     this.activeTab.set(tab);
+    this.currentPage.set(0);
     this.loadData();
   }
 
@@ -565,16 +632,20 @@ export class AdminDashboardComponent implements OnInit {
     this.isLoading.set(true);
     this.hasError.set(false);
 
-    // Načíst pending pro badge
-    this.apiService.getPendingPlaces().subscribe({
-      next: (res) => this.pendingPlaces.set(res),
+    // Načíst celkový počet pending pro badge
+    this.apiService.getPendingPlaces(0, 1).subscribe({
+      next: (res) => this.pendingTotal.set(res.totalElements),
       error: () => {},
     });
 
     if (this.activeTab() === 'USERS') {
-      this.apiService.getAdminUsers().subscribe({
+      this.apiService.getAdminUsers(this.currentPage(), this.pageSize).subscribe({
         next: (res) => {
-          this.users.set(res);
+          this.users.set(res.content);
+          this.totalElements.set(res.totalElements);
+          this.totalPages.set(res.totalPages);
+          this.hasPrevious.set(res.hasPrevious);
+          this.hasNext.set(res.hasNext);
           this.isLoading.set(false);
           this.hasError.set(false);
         },
@@ -585,9 +656,14 @@ export class AdminDashboardComponent implements OnInit {
         },
       });
     } else {
-      this.apiService.getAllPlacesAdmin(this.activeTab()).subscribe({
+      const statusParam = this.activeTab() === 'PENDING' ? 'PENDING' : this.activeTab() === 'APPROVED' ? 'APPROVED' : 'REJECTED';
+      this.apiService.getAllPlacesAdmin(statusParam, this.currentPage(), this.pageSize).subscribe({
         next: (res) => {
-          this.displayPlaces.set(res);
+          this.displayPlaces.set(res.content);
+          this.totalElements.set(res.totalElements);
+          this.totalPages.set(res.totalPages);
+          this.hasPrevious.set(res.hasPrevious);
+          this.hasNext.set(res.hasNext);
           this.isLoading.set(false);
           this.hasError.set(false);
         },
@@ -597,6 +673,13 @@ export class AdminDashboardComponent implements OnInit {
           this.toastService.error('Nepodařilo se načíst data administrace.', 'Chyba serveru');
         },
       });
+    }
+  }
+
+  goToPage(page: number): void {
+    if (page >= 0 && page < this.totalPages()) {
+      this.currentPage.set(page);
+      this.loadData();
     }
   }
 

@@ -1,5 +1,6 @@
 package hanzner.zebrakapp.service;
 
+import hanzner.zebrakapp.dto.PagedResponse;
 import hanzner.zebrakapp.dto.PlaceResponse;
 import hanzner.zebrakapp.entity.Category;
 import hanzner.zebrakapp.entity.Place;
@@ -74,32 +75,36 @@ class AdminServiceUnitTest {
     class GetPendingPlacesTests {
 
         @Test
-        @DisplayName("Vrátí seznam čekajících míst namapovaný na PlaceResponse")
+        @DisplayName("Vrátí stránkovaný seznam čekajících míst namapovaný na PlaceResponse")
         void testGetPendingPlaces_ReturnsMappedList() {
-            when(placeRepository.findByStatusOrderByCreatedAtDesc(PlaceStatus.PENDING))
-                    .thenReturn(List.of(pendingPlace));
+            org.springframework.data.domain.Page<Place> page = new org.springframework.data.domain.PageImpl<>(List.of(pendingPlace));
+            when(placeRepository.findByStatusOrderByCreatedAtDesc(eq(PlaceStatus.PENDING), any(org.springframework.data.domain.Pageable.class)))
+                    .thenReturn(page);
             when(placeService.mapToPlaceResponse(eq(pendingPlace), isNull(), isNull()))
                     .thenReturn(mockResponse);
 
-            List<PlaceResponse> result = adminService.getPendingPlaces();
+            PagedResponse<PlaceResponse> result = adminService.getPendingPlaces(org.springframework.data.domain.PageRequest.of(0, 20));
 
             assertNotNull(result);
-            assertEquals(1, result.size());
-            assertEquals(mockResponse.getId(), result.get(0).getId());
-            verify(placeRepository, times(1)).findByStatusOrderByCreatedAtDesc(PlaceStatus.PENDING);
+            assertEquals(1, result.getContent().size());
+            assertEquals(mockResponse.getId(), result.getContent().get(0).getId());
+            assertEquals(1, result.getTotalElements());
+            verify(placeRepository, times(1)).findByStatusOrderByCreatedAtDesc(eq(PlaceStatus.PENDING), any(org.springframework.data.domain.Pageable.class));
             verify(placeService, times(1)).mapToPlaceResponse(eq(pendingPlace), isNull(), isNull());
         }
 
         @Test
         @DisplayName("Vrátí prázdný seznam, pokud žádná čekající místa neexistují")
         void testGetPendingPlaces_EmptyList() {
-            when(placeRepository.findByStatusOrderByCreatedAtDesc(PlaceStatus.PENDING))
-                    .thenReturn(List.of());
+            org.springframework.data.domain.Page<Place> emptyPage = new org.springframework.data.domain.PageImpl<>(List.of());
+            when(placeRepository.findByStatusOrderByCreatedAtDesc(eq(PlaceStatus.PENDING), any(org.springframework.data.domain.Pageable.class)))
+                    .thenReturn(emptyPage);
 
-            List<PlaceResponse> result = adminService.getPendingPlaces();
+            PagedResponse<PlaceResponse> result = adminService.getPendingPlaces(org.springframework.data.domain.PageRequest.of(0, 20));
 
             assertNotNull(result);
-            assertTrue(result.isEmpty());
+            assertTrue(result.getContent().isEmpty());
+            assertEquals(0, result.getTotalElements());
             verify(placeService, never()).mapToPlaceResponse(any(), any(), any());
         }
     }
@@ -111,32 +116,36 @@ class AdminServiceUnitTest {
         @Test
         @DisplayName("Vrátí filtrovaná místa podle předaného statusu")
         void testGetAllPlaces_WithStatus_ReturnsFiltered() {
-            when(placeRepository.findByStatusOrderByCreatedAtDesc(PlaceStatus.APPROVED))
-                    .thenReturn(List.of(approvedPlace));
+            org.springframework.data.domain.Page<Place> page = new org.springframework.data.domain.PageImpl<>(List.of(approvedPlace));
+            when(placeRepository.findByStatusOrderByCreatedAtDesc(eq(PlaceStatus.APPROVED), any(org.springframework.data.domain.Pageable.class)))
+                    .thenReturn(page);
             when(placeService.mapToPlaceResponse(eq(approvedPlace), isNull(), isNull()))
                     .thenReturn(mockResponse);
 
-            List<PlaceResponse> result = adminService.getAllPlaces(PlaceStatus.APPROVED);
+            PagedResponse<PlaceResponse> result = adminService.getAllPlaces(PlaceStatus.APPROVED, org.springframework.data.domain.PageRequest.of(0, 20));
 
             assertNotNull(result);
-            assertEquals(1, result.size());
-            verify(placeRepository, times(1)).findByStatusOrderByCreatedAtDesc(PlaceStatus.APPROVED);
-            verify(placeRepository, never()).findAll();
+            assertEquals(1, result.getContent().size());
+            assertEquals(1, result.getTotalElements());
+            verify(placeRepository, times(1)).findByStatusOrderByCreatedAtDesc(eq(PlaceStatus.APPROVED), any(org.springframework.data.domain.Pageable.class));
+            verify(placeRepository, never()).findAll(any(org.springframework.data.domain.Pageable.class));
         }
 
         @Test
         @DisplayName("Vrátí všechna místa bez ohledu na stav, pokud je status null")
         void testGetAllPlaces_NullStatus_ReturnsAll() {
-            when(placeRepository.findAll()).thenReturn(List.of(pendingPlace, approvedPlace));
+            org.springframework.data.domain.Page<Place> page = new org.springframework.data.domain.PageImpl<>(List.of(pendingPlace, approvedPlace));
+            when(placeRepository.findAll(any(org.springframework.data.domain.Pageable.class))).thenReturn(page);
             when(placeService.mapToPlaceResponse(any(Place.class), isNull(), isNull()))
                     .thenReturn(mockResponse);
 
-            List<PlaceResponse> result = adminService.getAllPlaces(null);
+            PagedResponse<PlaceResponse> result = adminService.getAllPlaces(null, org.springframework.data.domain.PageRequest.of(0, 20));
 
             assertNotNull(result);
-            assertEquals(2, result.size());
-            verify(placeRepository, times(1)).findAll();
-            verify(placeRepository, never()).findByStatusOrderByCreatedAtDesc(any());
+            assertEquals(2, result.getContent().size());
+            assertEquals(2, result.getTotalElements());
+            verify(placeRepository, times(1)).findAll(any(org.springframework.data.domain.Pageable.class));
+            verify(placeRepository, never()).findByStatusOrderByCreatedAtDesc(any(), any());
         }
     }
 
