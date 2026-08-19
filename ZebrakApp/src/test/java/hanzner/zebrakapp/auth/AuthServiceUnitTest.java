@@ -21,7 +21,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -66,7 +66,7 @@ public class AuthServiceUnitTest {
                 .nickname("JanNovak")
                 .role(Role.ROLE_USER)
                 .active(true)
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
 
         when(userRepository.save(any(User.class))).thenReturn(savedUser);

@@ -10,7 +10,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Schema(description = "Detailní informace o místě / slevové nabídce")
@@ -87,8 +87,8 @@ public class PlaceResponse {
     private List<PlaceImageDto> images;
 
     @Schema(description = "Datum a čas vytvoření záznamu")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Schema(description = "Datum a čas poslední úpravy záznamu")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }

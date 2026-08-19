@@ -1,4 +1,4 @@
-name: zebrak-app
+name: zebrakapp
 
 services:
   postgres:
@@ -12,9 +12,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zebrakuser -d zebrakdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -44,14 +44,19 @@ services:
       redis:
         condition: service_started
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/zebrakdb
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       DB_USERNAME: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
       UPLOAD_DIR: /app/uploads
       JWT_SECRET: ${JWT_SECRET}
-      CORS_ORIGINS: http://localhost,http://localhost:80,http://localhost:4200
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      RATE_LIMIT_PLACE_MIN_INTERVAL: ${RATE_LIMIT_PLACE_MIN_INTERVAL}
+      RATE_LIMIT_PLACE_MAX_PER_MINUTE: ${RATE_LIMIT_PLACE_MAX_PER_MINUTE}
+      DOCKER_COMPOSE_ENABLED: "false"
     volumes:
       - uploads:/app/uploads
     expose:

@@ -7,7 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Schema(description = "Uživatelský profil")
 @Data
@@ -29,5 +29,5 @@ public class UserDto {
     private Role role;
 
     @Schema(description = "Datum a čas vytvoření účtu")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

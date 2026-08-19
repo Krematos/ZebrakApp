@@ -4,6 +4,7 @@ import {
   EventEmitter,
   Input,
   OnChanges,
+  OnDestroy,
   OnInit,
   Output,
   SimpleChanges,
@@ -11,7 +12,7 @@ import {
   inject,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Place } from '../../core/models/place.model';
+import { MapBounds, Place } from '../../core/models/place.model';
 import { MapyService } from '../../core/services/mapy.service';
 import * as L from 'leaflet';
 
@@ -35,6 +36,19 @@ export function escapeHtml(str: string | undefined | null): string {
   template: `
     <div class="map-wrapper">
       <div #mapContainer id="main-map" class="map-container"></div>
+
+      <!-- Top Center Search In Area Floating Toggle -->
+      <div class="map-search-toggle" (click)="toggleBoundsFilter()">
+        <label class="toggle-container" (click)="$event.stopPropagation()">
+          <input
+            type="checkbox"
+            [checked]="filterByMapBounds"
+            (change)="toggleBoundsFilter()"
+            id="map-bounds-checkbox"
+          />
+          <span class="toggle-label">Hledat při posunu mapy</span>
+        </label>
+      </div>
 
       <!-- Floating Controls -->
       <div class="map-floating-controls">
@@ -84,6 +98,44 @@ export function escapeHtml(str: string | undefined | null): string {
       height: 100%;
       z-index: 1;
     }
+    .map-search-toggle {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 500;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: var(--radius-full, 9999px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      border: 1px solid var(--border-color, #e2e8f0);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    .map-search-toggle:hover {
+      background: #ffffff;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+    }
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      margin: 0;
+    }
+    .toggle-container input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: #2563eb;
+      width: 16px;
+      height: 16px;
+    }
+    .toggle-label {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: var(--text-main, #0f172a);
+    }
     .map-floating-controls {
       position: absolute;
       top: 16px;
@@ -97,13 +149,19 @@ export function escapeHtml(str: string | undefined | null): string {
       width: 42px;
       height: 42px;
       padding: 0;
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-md);
+      border-radius: var(--radius-md, 8px);
+      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
       background: #ffffff;
-      color: var(--text-main);
+      color: var(--text-main, #0f172a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: 1px solid var(--border-color, #e2e8f0);
+      transition: background 0.15s ease;
     }
     .map-ctrl-btn:hover {
-      background: var(--bg-surface-hover);
+      background: var(--bg-surface-hover, #f8fafc);
     }
     .map-legend {
       position: absolute;
@@ -113,15 +171,15 @@ export function escapeHtml(str: string | undefined | null): string {
       background: rgba(255, 255, 255, 0.92);
       backdrop-filter: blur(8px);
       padding: 8px 14px;
-      border-radius: var(--radius-full);
-      box-shadow: var(--shadow-md);
-      border: 1px solid var(--border-color);
+      border-radius: var(--radius-full, 9999px);
+      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+      border: 1px solid var(--border-color, #e2e8f0);
       display: flex;
       align-items: center;
       gap: 12px;
       font-size: 0.75rem;
       font-weight: 600;
-      color: var(--text-main);
+      color: var(--text-main, #0f172a);
       flex-wrap: wrap;
     }
     .legend-item {
@@ -138,19 +196,30 @@ export function escapeHtml(str: string | undefined | null): string {
       .map-legend {
         display: none;
       }
+      .map-search-toggle {
+        top: 12px;
+        padding: 5px 12px;
+      }
     }
   `],
 })
-export class MapViewComponent implements OnInit, OnChanges {
+export class MapViewComponent implements OnInit, OnChanges, OnDestroy {
   @ViewChild('mapContainer', { static: true }) mapContainer!: ElementRef;
 
   @Input() places: Place[] = [];
   @Input() selectedPlace: Place | null = null;
+  @Input() filterByMapBounds = true;
+
   @Output() placeClicked = new EventEmitter<Place>();
+  @Output() boundsChanged = new EventEmitter<MapBounds | null>();
 
   private mapyService = inject(MapyService);
   private map?: L.Map;
   private markersMap = new Map<number, L.Marker>();
+
+  private moveDebounceTimer?: any;
+  private isProgrammaticMove = false;
+  private hasInitialized = false;
 
   ngOnInit(): void {
     this.initMap();
@@ -162,6 +231,15 @@ export class MapViewComponent implements OnInit, OnChanges {
     }
     if (changes['selectedPlace'] && this.selectedPlace && this.map) {
       this.centerOnPlace(this.selectedPlace);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.moveDebounceTimer) {
+      clearTimeout(this.moveDebounceTimer);
+    }
+    if (this.map) {
+      this.map.remove();
     }
   }
 
@@ -179,7 +257,54 @@ export class MapViewComponent implements OnInit, OnChanges {
       attribution: '© OpenStreetMap contributors, © CartoDB, © Mapy.cz data',
     }).addTo(this.map);
 
+    // Naslouchání na posun a zoomování mapy pro Bounding Box filtrování
+    this.map.on('moveend', () => {
+      this.handleMapMoveEnd();
+    });
+
     this.renderMarkers();
+    this.hasInitialized = true;
+  }
+
+  private handleMapMoveEnd(): void {
+    if (this.isProgrammaticMove) {
+      this.isProgrammaticMove = false;
+      return;
+    }
+
+    if (!this.filterByMapBounds) {
+      return;
+    }
+
+    if (this.moveDebounceTimer) {
+      clearTimeout(this.moveDebounceTimer);
+    }
+
+    // 350ms debounce zabraňuje zahlcení serveru při plynulém dragování
+    this.moveDebounceTimer = setTimeout(() => {
+      this.emitCurrentBounds();
+    }, 350);
+  }
+
+  emitCurrentBounds(): void {
+    if (!this.map) return;
+    const b = this.map.getBounds();
+    const bounds: MapBounds = {
+      minLat: b.getSouth(),
+      maxLat: b.getNorth(),
+      minLng: b.getWest(),
+      maxLng: b.getEast(),
+    };
+    this.boundsChanged.emit(bounds);
+  }
+
+  toggleBoundsFilter(): void {
+    this.filterByMapBounds = !this.filterByMapBounds;
+    if (this.filterByMapBounds) {
+      this.emitCurrentBounds();
+    } else {
+      this.boundsChanged.emit(null);
+    }
   }
 
   private renderMarkers(): void {
@@ -217,13 +342,16 @@ export class MapViewComponent implements OnInit, OnChanges {
       bounds.extend([place.latitude, place.longitude]);
     });
 
-    if (this.places.length > 0 && bounds.isValid()) {
+    // fitBounds provádíme pouze při vypnutém bounding-box filtru na prvotním načtení
+    if (!this.filterByMapBounds && !this.hasInitialized && this.places.length > 0 && bounds.isValid()) {
+      this.isProgrammaticMove = true;
       this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
     }
   }
 
   centerOnPlace(place: Place): void {
     if (!this.map) return;
+    this.isProgrammaticMove = true;
     this.map.setView([place.latitude, place.longitude], 15, { animate: true });
     const marker = this.markersMap.get(place.id);
     if (marker) {
@@ -260,12 +388,7 @@ export class MapViewComponent implements OnInit, OnChanges {
 
   fitAllMarkers(): void {
     if (!this.map) return;
-    if (this.places.length > 0) {
-      const bounds = L.latLngBounds(this.places.map((p) => [p.latitude, p.longitude]));
-      this.map.fitBounds(bounds, { padding: [50, 50] });
-    } else {
-      this.map.setView([49.8175, 15.473], 8);
-    }
+    this.map.setView([49.8175, 15.473], 8);
   }
 
   private createPopupElement(place: Place): HTMLElement {

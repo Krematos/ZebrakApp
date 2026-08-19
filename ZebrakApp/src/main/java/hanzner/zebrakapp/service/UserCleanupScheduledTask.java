@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Component
@@ -27,7 +27,7 @@ public class UserCleanupScheduledTask {
     @Scheduled(cron = "${app.cleanup.cron:0 0 3 * * ?}")
     @Transactional
     public void cleanupExpiredAccounts() {
-        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
+        Instant cutoffDate = Instant.now().minus(30, ChronoUnit.DAYS);
         log.info("Spouštím pravidelné čištění expirovaných soft-deleted uživatelů (starších než {})", cutoffDate);
 
         List<User> expiredUsers = userRepository.findExpiredSoftDeletedUsers(cutoffDate);

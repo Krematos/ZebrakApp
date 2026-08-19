@@ -17,7 +17,7 @@ spring:
 
 app:
   jwt:
-    secret: dGVzdFNlY3JldEtleUZvclplYnJha0FwcFRlc3RpbmdPbmx5TmVlZHNUb0JlQXRMZWFzdDI1NkJpdHNMb25nMTIzNDU2Nzg5MA==
+    secret: ${JWT_SECRET:testSecretKeyForTestingPurposesWith32CharsLong!}
     expiration-ms: 86400000
   upload:
     dir: target/test-uploads

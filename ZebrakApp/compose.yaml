@@ -1,15 +1,23 @@
 services:
   postgres:
-    image: 'postgres:latest'
+    image: postgres:18-alpine
+    container_name: zebrak-postgres
     environment:
-      - 'POSTGRES_DB=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - '5432:5432'
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
   redis:
-    image: 'redis:7-alpine'
+    image: redis:7-alpine
     container_name: zebrak-redis
     ports:
-      - '6379:6379'
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
 
+volumes:
+  pgdata:
+  redisdata:

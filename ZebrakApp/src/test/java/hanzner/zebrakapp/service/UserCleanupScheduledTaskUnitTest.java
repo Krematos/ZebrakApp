@@ -10,7 +10,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -34,29 +35,29 @@ class UserCleanupScheduledTaskUnitTest {
     @Test
     @DisplayName("cleanupExpiredAccounts() smaže uživatele s expirovanou lhůtou soft-delete")
     void testCleanupExpiredAccounts_Success() {
-        User expiredUser1 = User.builder().id(10L).email("old1@example.cz").deletedAt(LocalDateTime.now().minusDays(35)).build();
-        User expiredUser2 = User.builder().id(11L).email("old2@example.cz").deletedAt(LocalDateTime.now().minusDays(31)).build();
+        User expiredUser1 = User.builder().id(10L).email("old1@example.cz").deletedAt(Instant.now().minus(35, ChronoUnit.DAYS)).build();
+        User expiredUser2 = User.builder().id(11L).email("old2@example.cz").deletedAt(Instant.now().minus(31, ChronoUnit.DAYS)).build();
 
-        when(userRepository.findExpiredSoftDeletedUsers(any(LocalDateTime.class)))
+        when(userRepository.findExpiredSoftDeletedUsers(any(Instant.class)))
                 .thenReturn(List.of(expiredUser1, expiredUser2));
         when(userRepository.hardDeleteUsersByIds(eq(List.of(10L, 11L))))
                 .thenReturn(2);
 
         cleanupTask.cleanupExpiredAccounts();
 
-        verify(userRepository, times(1)).findExpiredSoftDeletedUsers(any(LocalDateTime.class));
+        verify(userRepository, times(1)).findExpiredSoftDeletedUsers(any(Instant.class));
         verify(userRepository, times(1)).hardDeleteUsersByIds(eq(List.of(10L, 11L)));
     }
 
     @Test
     @DisplayName("cleanupExpiredAccounts() nevolá hard delete pokud nejsou nalezeni žádní expirovaní uživatelé")
     void testCleanupExpiredAccounts_NoExpiredUsers_DoesNothing() {
-        when(userRepository.findExpiredSoftDeletedUsers(any(LocalDateTime.class)))
+        when(userRepository.findExpiredSoftDeletedUsers(any(Instant.class)))
                 .thenReturn(List.of());
 
         cleanupTask.cleanupExpiredAccounts();
 
-        verify(userRepository, times(1)).findExpiredSoftDeletedUsers(any(LocalDateTime.class));
+        verify(userRepository, times(1)).findExpiredSoftDeletedUsers(any(Instant.class));
         verify(userRepository, never()).hardDeleteUsersByIds(any());
     }
 }

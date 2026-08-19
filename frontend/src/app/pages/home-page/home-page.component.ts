@@ -9,7 +9,7 @@ import { AddPlaceModalComponent } from '../../components/add-place-modal/add-pla
 import { AuthModalComponent } from '../../components/auth-modal/auth-modal.component';
 import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
-import { CategoryInfo, CategoryType, DiscountType, Place, PriceLevelType } from '../../core/models/place.model';
+import { CategoryInfo, CategoryType, DiscountType, MapBounds, Place, PriceLevelType } from '../../core/models/place.model';
 
 @Component({
   selector: 'app-home-page',
@@ -83,7 +83,7 @@ import { CategoryInfo, CategoryType, DiscountType, Place, PriceLevelType } from 
           <div *ngIf="!isLoading() && !hasError() && places().length === 0" class="empty-state">
             <span class="empty-icon">🔍</span>
             <h3>Žádná místa neodpovídají filtrům</h3>
-            <p>Zkuste upravit vyhledávací dotaz nebo vybrat jinou kategorii.</p>
+            <p>Zkuste upravit vyhledávací dotaz nebo posunout mapu do jiné oblasti.</p>
             <button class="btn btn-primary" (click)="openAddPlace()">
               + Přidat první místo sem
             </button>
@@ -106,6 +106,7 @@ import { CategoryInfo, CategoryType, DiscountType, Place, PriceLevelType } from 
             [places]="places()"
             [selectedPlace]="selectedPlace()"
             (placeClicked)="onSelectPlace($event)"
+            (boundsChanged)="onBoundsChanged($event)"
           ></app-map-view>
         </section>
       </main>
@@ -358,6 +359,14 @@ export class HomePageComponent implements OnInit {
   readonly showAddPlaceModal = signal(false);
   readonly mobileTab = signal<'list' | 'map'>('list');
 
+  private currentBounds: MapBounds | null = null;
+  private activeFilters: {
+    category?: CategoryType;
+    priceLevel?: PriceLevelType;
+    discountType?: DiscountType;
+    q?: string;
+  } = {};
+
   private currentFilters: any = {};
 
   ngOnInit(): void {
@@ -395,17 +404,37 @@ export class HomePageComponent implements OnInit {
     });
   }
 
+  onBoundsChanged(bounds: MapBounds | null): void {
+    this.currentBounds = bounds;
+    this.applyFiltersAndLoad();
+  }
+
   onFilterChange(filters: {
     category: CategoryType | null;
     priceLevel: PriceLevelType | null;
     discountType: DiscountType | null;
     query: string;
   }): void {
-    this.currentFilters = {
+    this.activeFilters = {
       category: filters.category || undefined,
       priceLevel: filters.priceLevel || undefined,
       discountType: filters.discountType || undefined,
       q: filters.query || undefined,
+    };
+    this.applyFiltersAndLoad();
+  }
+
+  private applyFiltersAndLoad(): void {
+    this.currentFilters = {
+      ...this.activeFilters,
+      ...(this.currentBounds
+        ? {
+            minLat: this.currentBounds.minLat,
+            maxLat: this.currentBounds.maxLat,
+            minLng: this.currentBounds.minLng,
+            maxLng: this.currentBounds.maxLng,
+          }
+        : {}),
     };
     this.loadPlaces();
   }

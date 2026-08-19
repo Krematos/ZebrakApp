@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,7 +17,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     @Query(value = "SELECT * FROM users WHERE deleted_at IS NOT NULL AND deleted_at <= :threshold", nativeQuery = true)
-    List<User> findExpiredSoftDeletedUsers(@Param("threshold") LocalDateTime threshold);
+    List<User> findExpiredSoftDeletedUsers(@Param("threshold") Instant threshold);
 
     @Modifying
     @Query(value = "DELETE FROM users WHERE id IN (:ids)", nativeQuery = true)

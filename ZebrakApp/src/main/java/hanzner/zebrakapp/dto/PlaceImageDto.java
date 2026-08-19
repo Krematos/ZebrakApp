@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Schema(description = "Informace o fotografii místa")
 @Data
@@ -28,5 +28,5 @@ public class PlaceImageDto {
     private boolean isPrimary;
 
     @Schema(description = "Datum nahrání fotografie")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

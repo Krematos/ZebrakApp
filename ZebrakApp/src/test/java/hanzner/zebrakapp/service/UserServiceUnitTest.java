@@ -18,7 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -63,7 +63,7 @@ class UserServiceUnitTest {
                 .password("encoded_secret_password")
                 .role(Role.ROLE_USER)
                 .active(true)
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
 
         adminUser = User.builder()
@@ -73,7 +73,7 @@ class UserServiceUnitTest {
                 .password("encoded_admin_password")
                 .role(Role.ROLE_ADMIN)
                 .active(true)
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
     }
 
