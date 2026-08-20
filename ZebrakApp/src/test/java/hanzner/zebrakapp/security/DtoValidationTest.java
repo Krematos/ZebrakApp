@@ -258,4 +258,53 @@ public class DtoValidationTest {
                 .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.errors.password").exists());
     }
+
+    @Test
+    @DisplayName("GET /api/places s neplatným enumem kategorie vrátí 400 Bad Request se seznamem povolených hodnot")
+    void testSearchPlaces_InvalidCategoryEnum_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/places")
+                        .param("category", "NEEXISTUJICI_KATEGORIE"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Neplatná hodnota 'NEEXISTUJICI_KATEGORIE' pro parametr 'category'")))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("FOOD")));
+    }
+
+    @Test
+    @DisplayName("GET /api/places s neplatným enumem priceLevel vrátí 400 Bad Request se seznamem povolených hodnot")
+    void testSearchPlaces_InvalidPriceLevelEnum_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/places")
+                        .param("priceLevel", "DRAHE_JAKO_PES"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Neplatná hodnota 'DRAHE_JAKO_PES' pro parametr 'priceLevel'")))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("LOW")));
+    }
+
+    @Test
+    @DisplayName("POST /api/places s neplatným enumem v JSON body vrátí 400 Bad Request a detailní zprávu")
+    void testCreatePlace_InvalidEnumInJsonBody_ReturnsBadRequest() throws Exception {
+        String invalidJson = """
+                {
+                    "title": "Krásný obchod",
+                    "category": "NEPLATNA_KATEGORIE",
+                    "priceLevel": "LOW",
+                    "discountType": "PERMANENT",
+                    "address": "Hlavní 10",
+                    "city": "Praha",
+                    "latitude": 50.08,
+                    "longitude": 14.42
+                }
+                """;
+
+        mockMvc.perform(post("/api/places")
+                        .with(csrf())
+                        .cookie(authCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Neplatná hodnota 'NEPLATNA_KATEGORIE' pro pole 'category'")))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("FOOD")));
+    }
 }

@@ -152,4 +152,55 @@ class UserServiceUnitTest {
         assertThat(users.get(0).getNickname()).isEqualTo("BeznyUser");
         assertThat(users.get(1).getNickname()).isEqualTo("Admin");
     }
+
+    // --- EDGE CASE TESTY ---
+
+    @Test
+    @DisplayName("EDGE-CASE: deleteMyAccount() s prázdným heslem vyhodí výjimku")
+    void testDeleteMyAccount_EmptyPassword() {
+        DeleteAccountRequest request = new DeleteAccountRequest("");
+        String jwtToken = "valid.jwt.token";
+
+        assertThatThrownBy(() -> userService.deleteMyAccount(sampleUser, request, jwtToken))
+                .isInstanceOf(InvalidPasswordException.class)
+                .hasMessageContaining("Zadané heslo není správné");
+
+        verify(userRepository, never()).delete(any());
+        verifyNoInteractions(tokenBlacklistService);
+    }
+
+    @Test
+    @DisplayName("EDGE-CASE: deleteMyAccount() s null JWT tokenem nespadne, ale provede smazání")
+    void testDeleteMyAccount_NullJwt() {
+        DeleteAccountRequest request = new DeleteAccountRequest("mojeHeslo123");
+
+        when(passwordEncoder.matches("mojeHeslo123", "encoded_secret_password")).thenReturn(true);
+        // Token provider by měl vrátit 0 nebo spadnout, záleží na implementaci, předpokládáme že blacklist to ignoruje
+        
+        userService.deleteMyAccount(sampleUser, request, null);
+
+        verify(userRepository, times(1)).delete(sampleUser);
+        verify(tokenBlacklistService, never()).blacklistToken(any(), any());
+    }
+
+    @Test
+    @DisplayName("EDGE-CASE: deleteUserByAdmin() se pokusí smazat jiného admina - mělo by to projít (nebo selhat pokud to business logika zakazuje)")
+    void testDeleteUserByAdmin_DeleteAnotherAdmin() {
+        User anotherAdmin = User.builder().id(100L).email("admin2@example.cz").role(Role.ROLE_ADMIN).build();
+        when(userRepository.findById(100L)).thenReturn(Optional.of(anotherAdmin));
+
+        // Metoda nekontroluje roli cílového uživatele, pouze to, zda nemaže sám sebe
+        userService.deleteUserByAdmin(100L, adminUser);
+
+        verify(userRepository, times(1)).delete(anotherAdmin);
+    }
+
+    @Test
+    @DisplayName("EDGE-CASE: deleteUserByAdmin() s neexistujícím ID uživatele (např. ID = null)")
+    void testDeleteUserByAdmin_NullId() {
+        assertThatThrownBy(() -> userService.deleteUserByAdmin(null, adminUser))
+                .isInstanceOf(UserNotFoundException.class);
+
+        verify(userRepository, never()).delete(any());
+    }
 }

@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output, inject, signal } from '
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
+import { ToastService } from '../../core/services/toast.service';
 import { GeocodeResult, MapyService } from '../../core/services/mapy.service';
 import { CategoryInfo, CategoryType, DiscountType, Place, PriceLevelType } from '../../core/models/place.model';
 import * as L from 'leaflet';
@@ -180,7 +181,7 @@ import * as L from 'leaflet';
                     <circle cx="8.5" cy="8.5" r="1.5"></circle>
                     <polyline points="21 15 16 10 5 21"></polyline>
                   </svg>
-                  <span>Klikněte pro výběr fotek (JPG, PNG, WEBP)</span>
+                  <span>Klikněte pro výběr fotek (JPG, PNG, WEBP, max. 10 MB/soubor)</span>
                 </div>
               </div>
 
@@ -376,6 +377,8 @@ export class AddPlaceModalComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
   @Output() saved = new EventEmitter<Place>();
 
+  private toastService = inject(ToastService);
+
   readonly isSubmitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
@@ -385,6 +388,10 @@ export class AddPlaceModalComponent implements OnInit {
 
   private miniMap?: L.Map;
   private miniMarker?: L.Marker;
+
+  private readonly MAX_SINGLE_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+  private readonly MAX_TOTAL_FILES_SIZE = 30 * 1024 * 1024; // 30 MB
+  private readonly ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
   placeForm = this.fb.group({
     title: ['', [Validators.required]],
@@ -515,11 +522,39 @@ export class AddPlaceModalComponent implements OnInit {
 
   onFilesSelected(event: any): void {
     const files: FileList = event.target.files;
-    if (files) {
-      for (let i = 0; i < files.length; i++) {
-        this.selectedFiles.push(files[i]);
+    if (!files || files.length === 0) return;
+
+    let currentTotalSize = this.selectedFiles.reduce((acc, f) => acc + f.size, 0);
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      if (!this.ALLOWED_FILE_TYPES.includes(file.type.toLowerCase())) {
+        this.toastService.warning(`Soubor "${file.name}" nemá podporovaný formát (JPG, PNG, WEBP).`, 'Neplatný soubor');
+        continue;
       }
+
+      if (file.size > this.MAX_SINGLE_FILE_SIZE) {
+        this.toastService.warning(
+          `Soubor "${file.name}" přesahuje povolený limit 10 MB (${(file.size / (1024 * 1024)).toFixed(1)} MB).`,
+          'Příliš velký soubor'
+        );
+        continue;
+      }
+
+      if (currentTotalSize + file.size > this.MAX_TOTAL_FILES_SIZE) {
+        this.toastService.warning(
+          'Celková velikost vybraných fotografií překračuje limit 30 MB.',
+          'Překročen limit velikosti'
+        );
+        break;
+      }
+
+      this.selectedFiles.push(file);
+      currentTotalSize += file.size;
     }
+
+    event.target.value = '';
   }
 
   removeFile(index: number): void {
@@ -564,17 +599,25 @@ export class AddPlaceModalComponent implements OnInit {
           this.apiService.uploadImages(savedPlace.id, this.selectedFiles).subscribe({
             next: () => {
               this.isSubmitting.set(false);
+              this.toastService.success(
+                this.editPlaceData ? 'Místo bylo úspěšně upraveno.' : 'Místo bylo úspěšně přidáno.'
+              );
               this.saved.emit(savedPlace);
               this.close.emit();
             },
-            error: () => {
+            error: (uploadErr) => {
               this.isSubmitting.set(false);
+              const uploadMsg = uploadErr.error?.message || 'Místo bylo uloženo, ale fotografie se nepodařilo nahrát z důvodu překročení velikosti nebo nepodporovaného formátu.';
+              this.toastService.warning(uploadMsg, 'Upozornění k fotografiím');
               this.saved.emit(savedPlace);
               this.close.emit();
             },
           });
         } else {
           this.isSubmitting.set(false);
+          this.toastService.success(
+            this.editPlaceData ? 'Místo bylo úspěšně upraveno.' : 'Místo bylo úspěšně přidáno.'
+          );
           this.saved.emit(savedPlace);
           this.close.emit();
         }

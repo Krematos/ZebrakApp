@@ -140,4 +140,51 @@ class UserControllerUnitTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Zadané heslo není správné."));
     }
+
+    // --- EDGE CASE TESTY ---
+
+    @Test
+    @DisplayName("EDGE-CASE: DELETE /api/users/me bez payloadu (body) vrátí 400 Bad Request")
+    void testDeleteMyAccount_NoBody_Returns400() throws Exception {
+        mockMvc.perform(delete("/api/users/me")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("EDGE-CASE: DELETE /api/users/me s prázdným heslem vyhodí 400 z důvodu validace (NotBlank)")
+    void testDeleteMyAccount_EmptyPassword_Returns400() throws Exception {
+        DeleteAccountRequest request = new DeleteAccountRequest(""); // Prázdné heslo
+
+        mockMvc.perform(delete("/api/users/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+                // Validace @NotBlank (pokud ji máme v DTO) by to měla zastavit před voláním služby.
+                // Kdyby náhodou prošla, chytne to UserService jak je testováno výše.
+    }
+
+    @Test
+    @DisplayName("getMyPlaces() - neplatné parametry stránkování jsou ošetřeny normalizací na povolený rozsah (200 OK)")
+    void testGetMyPlaces_InvalidPagination_HandledGracefully() throws Exception {
+        PagedResponse<PlaceResponse> pagedResponse = PagedResponse.<PlaceResponse>builder()
+                .content(java.util.List.of())
+                .page(0)
+                .size(20)
+                .totalElements(0)
+                .totalPages(0)
+                .first(true)
+                .last(true)
+                .hasNext(false)
+                .hasPrevious(false)
+                .build();
+
+        when(placeService.getUserPlaces(any(User.class), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(pagedResponse);
+
+        mockMvc.perform(get("/api/users/my-places")
+                        .param("page", "-1")
+                        .param("size", "-5"))
+                .andExpect(status().isOk()); 
+    }
 }

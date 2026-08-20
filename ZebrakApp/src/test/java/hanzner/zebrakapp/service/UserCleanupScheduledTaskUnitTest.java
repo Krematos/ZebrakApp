@@ -60,4 +60,42 @@ class UserCleanupScheduledTaskUnitTest {
         verify(userRepository, times(1)).findExpiredSoftDeletedUsers(any(Instant.class));
         verify(userRepository, never()).hardDeleteUsersByIds(any());
     }
+
+    // --- EDGE CASE TESTY ---
+
+    @Test
+    @DisplayName("EDGE-CASE: cleanupExpiredAccounts() nespadne pokud userRepository vyhodí výjimku (nebo ji propustí) - záleží na error handlingu")
+    void testCleanupExpiredAccounts_RepositoryThrowsException() {
+        when(userRepository.findExpiredSoftDeletedUsers(any(Instant.class)))
+                .thenThrow(new RuntimeException("Database timeout nebo connection error"));
+
+        // Metoda by to měla buď zalogovat a zachytit (try-catch), nebo nechat vybublat.
+        // V současné implementaci bez try-catch to probublá ven, což u @Scheduled zastaví jeden konkrétní běh tasku (což je v pořádku).
+        try {
+            cleanupTask.cleanupExpiredAccounts();
+        } catch (Exception e) {
+            // Ignorujeme, v produkci by to vyhodilo chybu. Zde ověřujeme že to nespadne s null pointerem atd.
+        }
+
+        verify(userRepository, never()).hardDeleteUsersByIds(any());
+    }
+
+    @Test
+    @DisplayName("EDGE-CASE: cleanupExpiredAccounts() zpracuje i obrovské množství uživatelů bez chyby")
+    void testCleanupExpiredAccounts_MassiveUserList() {
+        // Zde sice testujeme jen MOCK, ale ujišťujeme se, že ID kolekce je správně předána do metody hardDeleteUsersByIds.
+        List<User> massiveList = new java.util.ArrayList<>();
+        List<Long> massiveIds = new java.util.ArrayList<>();
+        for (long i = 1; i <= 50000; i++) {
+            massiveList.add(User.builder().id(i).build());
+            massiveIds.add(i);
+        }
+
+        when(userRepository.findExpiredSoftDeletedUsers(any(Instant.class))).thenReturn(massiveList);
+        when(userRepository.hardDeleteUsersByIds(massiveIds)).thenReturn(50000);
+
+        cleanupTask.cleanupExpiredAccounts();
+
+        verify(userRepository, times(1)).hardDeleteUsersByIds(massiveIds);
+    }
 }

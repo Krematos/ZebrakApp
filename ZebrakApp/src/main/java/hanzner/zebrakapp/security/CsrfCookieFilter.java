@@ -8,19 +8,28 @@ import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 
 public class CsrfCookieFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
-        if (csrfToken == null) {
-            csrfToken = (CsrfToken) request.getAttribute("_csrf");
+        Object csrfTokenObj = request.getAttribute(CsrfToken.class.getName());
+        if (csrfTokenObj == null) {
+            csrfTokenObj = request.getAttribute("_csrf");
         }
-        if (csrfToken != null) {
-            // Načtení odloženého CSRF tokenu zajistí vytvoření XSRF-TOKEN cookie pro klienta
+        if (csrfTokenObj == null) {
+            csrfTokenObj = request.getAttribute("org.springframework.security.web.csrf.DeferredCsrfToken");
+        }
+        
+        if (csrfTokenObj instanceof CsrfToken csrfToken) {
             csrfToken.getToken();
+        } else if (csrfTokenObj instanceof Supplier<?> supplier) {
+            Object supplied = supplier.get();
+            if (supplied instanceof CsrfToken csrfToken) {
+                csrfToken.getToken();
+            }
         }
         filterChain.doFilter(request, response);
     }

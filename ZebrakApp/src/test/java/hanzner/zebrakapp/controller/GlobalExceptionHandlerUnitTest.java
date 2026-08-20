@@ -1,5 +1,7 @@
 package hanzner.zebrakapp.controller;
 
+import hanzner.zebrakapp.entity.Category;
+import hanzner.zebrakapp.entity.PriceLevel;
 import hanzner.zebrakapp.exception.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -143,6 +145,101 @@ class GlobalExceptionHandlerUnitTest {
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         assertEquals("UNAUTHORIZED_ACCESS", response.getBody().get("errorCode"));
         assertEquals(403, response.getBody().get("status"));
+    }
+
+    @Test
+    @DisplayName("handleMethodArgumentTypeMismatch pro enum vrátí 400 s popisem povolených hodnot")
+    void testHandleMethodArgumentTypeMismatch_Enum() {
+        org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex =
+                new org.springframework.web.method.annotation.MethodArgumentTypeMismatchException(
+                        "SPATNA_KATEGORIE",
+                        Category.class,
+                        "category",
+                        null,
+                        null
+                );
+
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleMethodArgumentTypeMismatch(ex);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("VALIDATION_ERROR", response.getBody().get("errorCode"));
+        assertEquals(400, response.getBody().get("status"));
+        assertTrue(response.getBody().get("message").toString().contains("Neplatná hodnota 'SPATNA_KATEGORIE' pro parametr 'category'"));
+        assertTrue(response.getBody().get("message").toString().contains("FOOD"));
+    }
+
+    @Test
+    @DisplayName("handleMethodArgumentTypeMismatch pro non-enum vrátí 400 s popisem očekávaného typu")
+    void testHandleMethodArgumentTypeMismatch_NonEnum() {
+        org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex =
+                new org.springframework.web.method.annotation.MethodArgumentTypeMismatchException(
+                        "neni_cislo",
+                        Long.class,
+                        "id",
+                        null,
+                        null
+                );
+
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleMethodArgumentTypeMismatch(ex);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("VALIDATION_ERROR", response.getBody().get("errorCode"));
+        assertTrue(response.getBody().get("message").toString().contains("Neplatná hodnota 'neni_cislo' pro parametr 'id'"));
+    }
+
+    @Test
+    @DisplayName("handleHttpMessageNotReadable s InvalidFormatException vrátí 400 s popisem pole")
+    void testHandleHttpMessageNotReadable_InvalidFormatException() {
+        com.fasterxml.jackson.databind.exc.InvalidFormatException ife =
+                new com.fasterxml.jackson.databind.exc.InvalidFormatException(
+                        null,
+                        "Cannot deserialize value",
+                        "NEPLATNA_CENA",
+                        PriceLevel.class
+                );
+        ife.prependPath(new com.fasterxml.jackson.databind.JsonMappingException.Reference(null, "priceLevel"));
+
+        org.springframework.http.converter.HttpMessageNotReadableException ex =
+                new org.springframework.http.converter.HttpMessageNotReadableException("JSON parse error", ife, null);
+
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleHttpMessageNotReadable(ex);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("VALIDATION_ERROR", response.getBody().get("errorCode"));
+        assertTrue(response.getBody().get("message").toString().contains("Neplatná hodnota 'NEPLATNA_CENA' pro pole 'priceLevel'"));
+        assertTrue(response.getBody().get("message").toString().contains("LOW"));
+    }
+
+    @Test
+    @DisplayName("handleMissingServletRequestParameter vrátí 400 s názvem chybějícího parametru")
+    void testHandleMissingServletRequestParameter() {
+        org.springframework.web.bind.MissingServletRequestParameterException ex =
+                new org.springframework.web.bind.MissingServletRequestParameterException("q", "String");
+
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleMissingServletRequestParameter(ex);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("VALIDATION_ERROR", response.getBody().get("errorCode"));
+        assertTrue(response.getBody().get("message").toString().contains("q"));
+    }
+
+    @Test
+    @DisplayName("handleMaxUploadSizeExceeded vrátí 413 PAYLOAD_TOO_LARGE")
+    void testHandleMaxUploadSizeExceeded() {
+        org.springframework.web.multipart.MaxUploadSizeExceededException ex =
+                new org.springframework.web.multipart.MaxUploadSizeExceededException(10 * 1024 * 1024);
+
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleMaxUploadSizeExceeded(ex);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, response.getStatusCode());
+        assertEquals("PAYLOAD_TOO_LARGE", response.getBody().get("errorCode"));
+        assertEquals(413, response.getBody().get("status"));
+        assertTrue(response.getBody().get("message").toString().contains("překročila maximální povolený limit"));
     }
 
     @Test

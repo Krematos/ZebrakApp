@@ -98,7 +98,7 @@ public class PlaceController {
         String ipAddress = request.getRemoteAddr();
 
         int validatedPage = Math.max(0, page);
-        int validatedSize = Math.max(1, Math.min(size, 100));
+        int validatedSize = Math.clamp(size, 1, 100);
         org.springframework.data.domain.Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir)
                 ? org.springframework.data.domain.Sort.Direction.ASC
                 : org.springframework.data.domain.Sort.Direction.DESC;

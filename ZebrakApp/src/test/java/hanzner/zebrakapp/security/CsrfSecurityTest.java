@@ -3,7 +3,11 @@ package hanzner.zebrakapp.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hanzner.zebrakapp.dto.AuthRequest;
 import hanzner.zebrakapp.dto.PlaceCreateRequest;
-import hanzner.zebrakapp.entity.*;
+import hanzner.zebrakapp.entity.Category;
+import hanzner.zebrakapp.entity.DiscountType;
+import hanzner.zebrakapp.entity.PriceLevel;
+import hanzner.zebrakapp.entity.Role;
+import hanzner.zebrakapp.entity.User;
 import hanzner.zebrakapp.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,11 +24,15 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.util.UUID;
+
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @ActiveProfiles("Test")
@@ -44,6 +52,7 @@ public class CsrfSecurityTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private User testUser;
+    private String userRawPassword;
     private Cookie authCookie;
 
     @BeforeEach
@@ -53,17 +62,18 @@ public class CsrfSecurityTest {
                 .apply(springSecurity())
                 .build();
 
+        userRawPassword = "Pass_" + UUID.randomUUID();
         testUser = userRepository.save(User.builder()
-                .email("csrf_user_" + System.currentTimeMillis() + "@test.cz")
-                .password(passwordEncoder.encode("Secret123!"))
-                .nickname("CsrfUser")
+                .email("csrf_user_" + UUID.randomUUID() + "@test.cz")
+                .password(passwordEncoder.encode(userRawPassword))
+                .nickname("CsrfUser_" + System.currentTimeMillis())
                 .role(Role.ROLE_USER)
                 .active(true)
                 .build());
 
         AuthRequest loginReq = AuthRequest.builder()
                 .email(testUser.getEmail())
-                .password("Secret123!")
+                .password(userRawPassword)
                 .build();
 
         MvcResult result = mockMvc.perform(post("/api/auth/login")
@@ -135,7 +145,7 @@ public class CsrfSecurityTest {
     void testExemptedEndpointsWorkWithoutCsrf() throws Exception {
         AuthRequest loginReq = AuthRequest.builder()
                 .email(testUser.getEmail())
-                .password("Secret123!")
+                .password(userRawPassword)
                 .build();
 
         // Login bez CSRF
